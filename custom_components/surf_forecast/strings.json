@@ -147,6 +147,28 @@
       "session_upcoming": {
         "name": "Session upcoming"
       }
+    },
+    "button": {
+      "dashboard_cards": {
+        "name": "Dashboard cards"
+      }
+    }
+  },
+  "services": {
+    "dashboard_cards": {
+      "name": "Generate dashboard cards",
+      "description": "Builds ready-to-paste YAML for compass, swell chart and 7-day table with the real entity IDs. Shown as a notification, or returned as response.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Spot",
+          "description": "Only for this spot (empty = all)."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_entry": {
+      "message": "This spot is not loaded."
     }
   }
 }

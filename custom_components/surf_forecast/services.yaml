@@ -1,0 +1,7 @@
+dashboard_cards:
+  fields:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: surf_forecast

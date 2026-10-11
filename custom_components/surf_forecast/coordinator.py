@@ -103,10 +103,12 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.notified"
         )
         self._notified: dict[str, str] = {}
+        self.cards_shown = False
 
     async def _async_setup(self) -> None:
         stored = await self._store.async_load()
         self._notified = (stored or {}).get("sessions", {})
+        self.cards_shown = bool((stored or {}).get("cards_shown"))
 
     async def _async_update_data(self) -> SurfData:
         try:
@@ -120,6 +122,11 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
         data = evaluate(hours, self.criteria, tz)
         await self._handle_notifications(data)
         return data
+
+    async def async_save_state(self) -> None:
+        await self._store.async_save(
+            {"sessions": self._notified, "cards_shown": self.cards_shown}
+        )
 
     # ------------------------------------------------------------------ #
     # Notifications
@@ -165,7 +172,7 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
             and not any(s.start < end and start < s.end for start, end in known)
         ]
         if not new_sessions:
-            await self._store.async_save({"sessions": self._notified})
+            await self.async_save_state()
             return
 
         for session in new_sessions:
@@ -189,7 +196,7 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
         if service:
             await self._send_notification(service, new_sessions, data)
 
-        await self._store.async_save({"sessions": self._notified})
+        await self.async_save_state()
 
     async def _send_notification(
         self, service: str, sessions: list[Session], data: SurfData

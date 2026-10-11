@@ -85,6 +85,7 @@ Jede Stunde bekommt ein Rating aus drei Teilen:
 | `sensor.<spot>_7_day_forecast` | State: bestes Rating heute. Attribute: `daily` (7 Tage) und `hourly` (168 h) |
 | `binary_sensor.<spot>_surfable_now` | An, wenn die aktuelle Stunde passt |
 | `binary_sensor.<spot>_session_upcoming` | An, wenn innerhalb des Vorlaufs eine Session ansteht |
+| `button.<spot>_dashboard_cards` | Zeigt fertiges Dashboard-YAML für diesen Spot als Benachrichtigung |
 
 Die Entity-IDs richten sich nach der Systemsprache. Auf Deutsch heißen sie z. B.
 `sensor.hausstrand_wellenhohe` oder `sensor.hausstrand_7_tage_forecast`. Die Beispiele unten
@@ -146,6 +147,22 @@ actions:
 
 ## Dashboard
 
+### Karten automatisch erzeugen
+
+Du musst die Beispiele unten nicht von Hand anpassen. Beim Anlegen eines Spots erscheint in HA
+eine **Benachrichtigung** (🔔 links unten) mit fertigem YAML für Kompass, Swell-Verlauf und
+7-Tage-Tabelle. Darin stehen bereits deine echten Entity-IDs, egal in welcher Sprache dein HA
+läuft. Dashboard → ✏️ Bearbeiten → *Karte hinzufügen* → *Manuell* → Block einfügen.
+
+Später kannst du das YAML jederzeit erneut erzeugen:
+
+- **Button** *Dashboard-Karten* am Spot-Gerät
+  (*Einstellungen → Geräte & Dienste → Surf Forecast → Spot*)
+- **Aktion** `surf_forecast.dashboard_cards` (optional mit `config_entry_id`). Mit
+  Antwortvariable liefert sie das YAML als Daten zurück, statt eine Benachrichtigung zu zeigen.
+
+Die Beispiele unten verwenden die englischen Entity-IDs.
+
 ### Kompass: Wind, Swell und dein Korridor (mit [Compass Card](https://github.com/tomvanswam/compass-card) aus HACS)
 
 Die Integration liefert pro Spot ein Hintergrundbild für den Kompass:
@@ -192,7 +209,6 @@ value_sensors:
   - sensor: sensor.hausstrand_wind_speed
   - sensor: sensor.hausstrand_swell_height
     decimals: 1
-  - sensor: sensor.hausstrand_swell_period
 compass:
   circle:
     background_image: /api/surf_forecast/compass/hausstrand.svg
@@ -226,7 +242,55 @@ content: |
   **Nächste Session:** {{ state_attr('sensor.hausstrand_next_session', 'text') or 'keine in Sicht 😴' }}
 ```
 
-### Stündlicher Chart (mit [ApexCharts Card](https://github.com/RomRider/apexcharts-card) aus HACS)
+### Swell-Verlauf (mit [ApexCharts Card](https://github.com/RomRider/apexcharts-card) aus HACS)
+
+Swell-Höhe und -Periode über 7 Tage. Grüne Balken markieren die Stunden, die zu deinen
+Bedingungen passen.
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Hausstrand – Swell 7 Tage
+graph_span: 7d
+span:
+  start: hour
+now:
+  show: true
+yaxis:
+  - id: height
+    min: 0
+    decimals: 1
+  - id: period
+    opposite: true
+    min: 0
+    decimals: 0
+series:
+  - entity: sensor.hausstrand_7_day_forecast
+    name: Swell (m)
+    yaxis_id: height
+    type: area
+    color: "#1e88e5"
+    data_generator: |
+      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.swell]);
+  - entity: sensor.hausstrand_7_day_forecast
+    name: Periode (s)
+    yaxis_id: period
+    type: line
+    color: "#fb8c00"
+    data_generator: |
+      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.swell_period]);
+  - entity: sensor.hausstrand_7_day_forecast
+    name: Surfbar
+    yaxis_id: height
+    type: column
+    color: "#43a047"
+    opacity: 0.3
+    data_generator: |
+      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.match ? h.swell : 0]);
+```
+
+### Welle & Wind (mit ApexCharts Card)
 
 ```yaml
 type: custom:apexcharts-card

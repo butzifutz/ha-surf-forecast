@@ -147,6 +147,28 @@
       "session_upcoming": {
         "name": "Session in Sicht"
       }
+    },
+    "button": {
+      "dashboard_cards": {
+        "name": "Dashboard-Karten"
+      }
+    }
+  },
+  "services": {
+    "dashboard_cards": {
+      "name": "Dashboard-Karten erzeugen",
+      "description": "Erzeugt fertiges YAML für Kompass, Swell-Verlauf und 7-Tage-Tabelle mit den echten Entity-IDs. Ohne Antwortvariable als Benachrichtigung, sonst als Antwort.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Spot",
+          "description": "Nur für diesen Spot (leer = alle)."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_entry": {
+      "message": "Dieser Spot ist nicht geladen."
     }
   }
 }
