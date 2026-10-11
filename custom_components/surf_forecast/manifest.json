@@ -1,0 +1,12 @@
+{
+  "domain": "surf_forecast",
+  "name": "Surf Forecast",
+  "codeowners": ["@butzifutz"],
+  "config_flow": true,
+  "documentation": "https://github.com/butzifutz/ha-surf-forecast",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/butzifutz/ha-surf-forecast/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

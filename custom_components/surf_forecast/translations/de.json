@@ -1,0 +1,152 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Surf-Spot",
+        "description": "Name und Position deines Spots. Setz den Pin direkt vor den Strand aufs Wasser.",
+        "data": {
+          "name": "Name",
+          "location": "Position"
+        }
+      },
+      "conditions": {
+        "title": "Bedingungen",
+        "description": "Lege fest, wann es für dich surfbar ist. Eine Stunde zählt, wenn alle Bedingungen erfüllt sind. Mehrere surfbare Stunden am Stück ergeben eine Session.",
+        "data": {
+          "wind_unit": "Einheit Windgeschwindigkeit",
+          "wave_min": "Wellenhöhe min.",
+          "wave_max": "Wellenhöhe max.",
+          "period_min": "Periode min.",
+          "use_swell": "Swell statt Gesamt-Wellenhöhe verwenden",
+          "swell_dir_from": "Swell-Richtung von (−1 = egal)",
+          "swell_dir_to": "Swell-Richtung bis (−1 = egal)",
+          "wind_max": "Wind max.",
+          "wind_dir_from": "Wind-Korridor von (−1 = egal)",
+          "wind_dir_to": "Wind-Korridor bis (−1 = egal)",
+          "glassy_max": "Bis zu dieser Windstärke ist die Richtung egal",
+          "min_duration": "Mindestdauer einer Session",
+          "daylight_only": "Nur bei Tageslicht",
+          "notify_service": "Benachrichtigungsdienst (z. B. notify.mobile_app_mein_handy)",
+          "notify_days": "Vorlauf für Benachrichtigungen",
+          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)"
+        },
+        "data_description": {
+          "wind_dir_from": "Richtung, AUS der der Wind kommt (meteorologisch, 0 = N, 90 = O). Der Korridor läuft im Uhrzeigersinn von → bis, z. B. 90 → 200 für Offshore an einem nach Westen offenen Strand.",
+          "swell_dir_from": "Richtung, aus der der Swell kommt, im Uhrzeigersinn von → bis.",
+          "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Open-Meteo ist nicht erreichbar.",
+      "no_marine_data": "Für diesen Ort gibt es keine Wellendaten. Setz den Pin etwas weiter aufs Meer hinaus.",
+      "wave_range": "Die maximale Wellenhöhe muss größer als die minimale sein.",
+      "corridor_incomplete": "Gib beide Grenzen des Korridors an oder setze beide auf −1.",
+      "notify_service": "Der Dienst muss mit notify. beginnen."
+    },
+    "abort": {
+      "already_configured": "Dieser Spot ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Bedingungen",
+        "description": "Lege fest, wann es für dich surfbar ist. Eine Stunde zählt, wenn alle Bedingungen erfüllt sind. Mehrere surfbare Stunden am Stück ergeben eine Session.",
+        "data": {
+          "wind_unit": "Einheit Windgeschwindigkeit",
+          "wave_min": "Wellenhöhe min.",
+          "wave_max": "Wellenhöhe max.",
+          "period_min": "Periode min.",
+          "use_swell": "Swell statt Gesamt-Wellenhöhe verwenden",
+          "swell_dir_from": "Swell-Richtung von (−1 = egal)",
+          "swell_dir_to": "Swell-Richtung bis (−1 = egal)",
+          "wind_max": "Wind max.",
+          "wind_dir_from": "Wind-Korridor von (−1 = egal)",
+          "wind_dir_to": "Wind-Korridor bis (−1 = egal)",
+          "glassy_max": "Bis zu dieser Windstärke ist die Richtung egal",
+          "min_duration": "Mindestdauer einer Session",
+          "daylight_only": "Nur bei Tageslicht",
+          "notify_service": "Benachrichtigungsdienst (z. B. notify.mobile_app_mein_handy)",
+          "notify_days": "Vorlauf für Benachrichtigungen",
+          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)"
+        },
+        "data_description": {
+          "wind_dir_from": "Richtung, AUS der der Wind kommt (meteorologisch, 0 = N, 90 = O). Der Korridor läuft im Uhrzeigersinn von → bis, z. B. 90 → 200 für Offshore an einem nach Westen offenen Strand.",
+          "swell_dir_from": "Richtung, aus der der Swell kommt, im Uhrzeigersinn von → bis.",
+          "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Open-Meteo ist nicht erreichbar.",
+      "no_marine_data": "Für diesen Ort gibt es keine Wellendaten. Setz den Pin etwas weiter aufs Meer hinaus.",
+      "wave_range": "Die maximale Wellenhöhe muss größer als die minimale sein.",
+      "corridor_incomplete": "Gib beide Grenzen des Korridors an oder setze beide auf −1.",
+      "notify_service": "Der Dienst muss mit notify. beginnen."
+    }
+  },
+  "selector": {
+    "wind_unit": {
+      "options": {
+        "kn": "Knoten (kn)",
+        "kmh": "km/h",
+        "ms": "m/s"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "wave_height": {
+        "name": "Wellenhöhe"
+      },
+      "wave_period": {
+        "name": "Wellenperiode"
+      },
+      "wave_direction": {
+        "name": "Wellenrichtung"
+      },
+      "swell_height": {
+        "name": "Swell-Höhe"
+      },
+      "swell_period": {
+        "name": "Swell-Periode"
+      },
+      "swell_direction": {
+        "name": "Swell-Richtung"
+      },
+      "wind_speed": {
+        "name": "Windgeschwindigkeit"
+      },
+      "wind_gusts": {
+        "name": "Windböen"
+      },
+      "wind_direction": {
+        "name": "Windrichtung"
+      },
+      "water_temperature": {
+        "name": "Wassertemperatur"
+      },
+      "tide": {
+        "name": "Wasserstand (Tide)"
+      },
+      "rating": {
+        "name": "Surf-Rating"
+      },
+      "next_session": {
+        "name": "Nächste Session"
+      },
+      "forecast": {
+        "name": "7-Tage-Forecast"
+      }
+    },
+    "binary_sensor": {
+      "surfable_now": {
+        "name": "Jetzt surfbar"
+      },
+      "session_upcoming": {
+        "name": "Session in Sicht"
+      }
+    }
+  }
+}

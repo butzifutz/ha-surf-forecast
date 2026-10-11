@@ -1,0 +1,77 @@
+blueprint:
+  name: Surf-Session Benachrichtigung
+  description: >-
+    Schickt eine Push-Nachricht, sobald die Surf-Forecast-Integration eine neue
+    Session findet, die deine Bedingungen erfüllt (Event `surf_forecast_session`).
+    Jede Session wird nur einmal gemeldet.
+  domain: automation
+  source_url: https://github.com/butzifutz/ha-surf-forecast/blob/main/blueprints/automation/surf_forecast/surf_session_notify.yaml
+  input:
+    notify_device:
+      name: Gerät
+      description: Handy mit der Home Assistant Companion App.
+      selector:
+        device:
+          filter:
+            - integration: mobile_app
+    min_rating:
+      name: Mindest-Rating
+      description: Nur Sessions mit mindestens diesem Rating (0–5) melden.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 0.5
+    min_hours:
+      name: Mindestdauer
+      description: Nur Sessions melden, die mindestens so viele Stunden dauern.
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 12
+          unit_of_measurement: h
+    quiet_start:
+      name: Ruhezeit ab
+      description: Zwischen Ruhezeit-Beginn und -Ende wird nichts gesendet.
+      default: "22:00:00"
+      selector:
+        time: {}
+    quiet_end:
+      name: Ruhezeit bis
+      default: "06:30:00"
+      selector:
+        time: {}
+
+mode: queued
+max: 10
+
+triggers:
+  - trigger: event
+    event_type: surf_forecast_session
+
+variables:
+  min_rating: !input min_rating
+  min_hours: !input min_hours
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.max_rating | float(0) >= min_rating | float(0)
+         and trigger.event.data.hours | int(0) >= min_hours | int(0) }}
+  - condition: not
+    conditions:
+      - condition: time
+        after: !input quiet_start
+        before: !input quiet_end
+
+actions:
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "🏄 Surf-Alarm {{ trigger.event.data.spot }}"
+    message: >-
+      {{ trigger.event.data.description }}
+      (Wind aus {{ trigger.event.data.wind_direction }},
+      Swell aus {{ trigger.event.data.swell_direction }})
