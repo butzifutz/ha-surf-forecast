@@ -57,6 +57,12 @@ def _corridor(options: dict[str, Any], key_from: str, key_to: str) -> tuple[floa
     return float(start), float(end)
 
 
+def windy_url(latitude: float, longitude: float) -> str:
+    """Link to Windy's wave layer and point forecast for the spot."""
+    lat, lon = f"{latitude:.3f}", f"{longitude:.3f}"
+    return f"https://www.windy.com/{lat}/{lon}?waves,{lat},{lon},10"
+
+
 def criteria_from_options(options: dict[str, Any]) -> SurfCriteria:
     opts = {**DEFAULT_OPTIONS, **options}
     return SurfCriteria(
@@ -91,6 +97,7 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
         self.latitude: float = location[CONF_LATITUDE]
         self.longitude: float = location[CONF_LONGITUDE]
         self.spot_name: str = entry.data.get(CONF_NAME, entry.title)
+        self.windy_url = windy_url(self.latitude, self.longitude)
         self._client = OpenMeteoClient(async_get_clientsession(hass))
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}.notified"
@@ -169,6 +176,7 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
                 {
                     "entry_id": self.config_entry.entry_id,
                     "spot": self.spot_name,
+                    "windy_url": self.windy_url,
                     "description": self.describe_session(session, data.tz),
                     "wind_unit": self.wind_unit,
                     "wind_direction": compass(first_hour.wind_direction) if first_hour else None,
@@ -190,11 +198,17 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
         if not name:
             domain, name = "notify", domain
         lines = [self.describe_session(s, data.tz) for s in sessions]
-        title = f"🏄 Surf-Alarm {self.spot_name}"
-        message = "\n".join(lines)
+        payload: dict[str, Any] = {
+            "title": f"🏄 Surf-Alarm {self.spot_name}",
+            "message": "\n".join(lines),
+        }
+        if domain == "notify" and name.startswith("mobile_app_"):
+            # Companion app: tapping the notification opens Windy
+            # (`url` is used by iOS, `clickAction` by Android).
+            payload["data"] = {"url": self.windy_url, "clickAction": self.windy_url}
+        else:
+            payload["message"] += f"\nWindy: {self.windy_url}"
         try:
-            await self.hass.services.async_call(
-                domain, name, {"title": title, "message": message}, blocking=False
-            )
+            await self.hass.services.async_call(domain, name, payload, blocking=False)
         except Exception:  # noqa: BLE001 - never break updates because of notify
             _LOGGER.exception("Could not send surf notification via %s", service)

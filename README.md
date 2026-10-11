@@ -77,6 +77,7 @@ Jede Stunde bekommt ein Rating aus drei Teilen:
 | `sensor.<spot>_wave_height` / `_period` / `_direction` | Aktuelle Stunde (Gesamtwelle) |
 | `sensor.<spot>_swell_height` / `_period` / `_direction` | Aktueller Swell |
 | `sensor.<spot>_wind_speed` / `_gusts` / `_direction` | Wind (Richtungen haben Attribut `compass`, z. B. „WNW“) |
+| | Wind- und Swell-Richtung haben zusätzlich `in_corridor` (1/0) und `compass_image` (siehe Kompass) |
 | `sensor.<spot>_water_temperature` | Wassertemperatur |
 | `sensor.<spot>_tide` | Wasserstand inkl. Gezeiten (nicht überall verfügbar) |
 | `sensor.<spot>_surf_rating` | Rating der aktuellen Stunde (0–5) |
@@ -97,6 +98,8 @@ nach einem Neustart. Verschiebt sich eine Session im Forecast um ein paar Stunde
 ebenfalls nicht erneut gemeldet.
 
 1. **Direkt:** Im Optionsdialog einen Dienst wie `notify.mobile_app_mein_handy` eintragen. Fertig.
+   Bei der Companion App öffnet ein Tipp auf die Nachricht den Spot auf **Windy**. Bei anderen
+   Diensten (Telegram, E-Mail, …) steht der Windy-Link im Text.
 2. **Blueprint:** [`blueprints/automation/surf_forecast/surf_session_notify.yaml`](blueprints/automation/surf_forecast/surf_session_notify.yaml)
    importieren (*Einstellungen → Automationen → Blueprints → Blueprint importieren*, Raw-URL der
    Datei). Damit bekommst du Mindest-Rating, Mindestdauer und Ruhezeiten (Meldungen während der
@@ -120,6 +123,7 @@ wind_max: 11
 wind_unit: kn
 wind_direction: OSO
 swell_direction: WNW
+windy_url: https://www.windy.com/54.180/7.880?waves,54.180,7.880,10
 entry_id: ...
 ```
 
@@ -141,6 +145,67 @@ actions:
 ```
 
 ## Dashboard
+
+### Kompass: Wind, Swell und dein Korridor (mit [Compass Card](https://github.com/tomvanswam/compass-card) aus HACS)
+
+Die Integration liefert pro Spot ein Hintergrundbild für den Kompass:
+
+- **grüner Keil:** dein Wind-Korridor (aus dieser Richtung darf der Wind kommen)
+- **blauer Ring:** dein Swell-Korridor
+
+Die Pfeile zeigen, woher Wind und Swell gerade kommen. Liegt der Pfeil im grünen Keil, passt die
+Windrichtung, und der Pfeil wird zusätzlich grün statt rot.
+
+Bild-URL: `/api/surf_forecast/compass/<spot>.svg`, wobei `<spot>` der Name des Spots in
+Kleinbuchstaben mit `_` statt Leerzeichen ist (z. B. `hausstrand`, `st_peter_ording`). Die exakte
+URL steht auch im Attribut `compass_image` des Windrichtungs-Sensors.
+
+```yaml
+type: custom:compass-card
+header:
+  title:
+    value: Hausstrand
+  icon:
+    value: mdi:surfing
+indicator_sensors:
+  # Wind: Pfeil zeigt zur Mitte, sitzt also dort, woher der Wind kommt
+  - sensor: sensor.hausstrand_wind_direction
+    indicator:
+      image: arrow_inward
+      color: "#e53935"
+      dynamic_style:
+        sensor: sensor.hausstrand_wind_direction
+        attribute: in_corridor
+        bands:
+          - from_value: 1
+            color: "#43a047"
+  # Swell: blauer Punkt außen am Ring
+  - sensor: sensor.hausstrand_swell_direction
+    indicator:
+      image: circle
+      color: "#1e88e5"
+    state_abbreviation:
+      show: false
+    state_value:
+      show: false
+value_sensors:
+  - sensor: sensor.hausstrand_wind_speed
+  - sensor: sensor.hausstrand_swell_height
+    decimals: 1
+  - sensor: sensor.hausstrand_swell_period
+compass:
+  circle:
+    background_image: /api/surf_forecast/compass/hausstrand.svg
+    background_opacity: 1
+  north:
+    show: true
+tap_action:
+  action: url
+  url: https://www.windy.com/54.180/7.880?waves,54.180,7.880,10
+```
+
+Ein Tipp auf den Kompass öffnet den Spot auf Windy. Die URL für deinen Spot steht im Attribut
+`windy_url` des Sensors „Nächste Session“.
 
 ### 7-Tage-Übersicht (Markdown-Karte, ohne Zusatzkarten)
 
@@ -221,6 +286,13 @@ gusts, wind_dir, tide, rating, match`.
   Bedingungen solltest du deshalb an deinen Spot anpassen und mit der Zeit nachjustieren.
 - Die Gezeiten-Daten aus dem Modell sind grob. Für Spots, bei denen die Tide entscheidend ist,
   ist eine lokale Gezeitentafel genauer.
+
+## Lizenz
+
+[MIT](LICENSE). Die Wetter- und Wellendaten stammen von [Open-Meteo.com](https://open-meteo.com/)
+und stehen unter [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Die Namensnennung
+ist in jeder Entität als `attribution` hinterlegt. Windy wird nur verlinkt; die Integration ruft
+keine Daten von Windy ab.
 
 ## Entwicklung
 

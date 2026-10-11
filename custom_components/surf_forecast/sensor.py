@@ -20,7 +20,8 @@ from homeassistant.util import dt as dt_util
 
 from .coordinator import SurfConfigEntry, SurfCoordinator
 from .entity import SurfEntity
-from .surf import HourPoint, compass, hour_as_attr
+from .surf import HourPoint, SurfCriteria, compass, hour_as_attr, in_corridor
+from .views import compass_url
 
 SPEED_UNITS = {"kn": UnitOfSpeed.KNOTS, "km/h": UnitOfSpeed.KILOMETERS_PER_HOUR,
                "m/s": UnitOfSpeed.METERS_PER_SECOND}  # fmt: skip
@@ -30,6 +31,7 @@ SPEED_UNITS = {"kn": UnitOfSpeed.KNOTS, "km/h": UnitOfSpeed.KILOMETERS_PER_HOUR,
 class HourSensorDescription(SensorEntityDescription):
     value_fn: Callable[[HourPoint], float | None]
     compass_fn: Callable[[HourPoint], float | None] | None = None
+    corridor_fn: Callable[[SurfCriteria], tuple[float, float] | None] | None = None
 
 
 HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
@@ -82,6 +84,7 @@ HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
         icon="mdi:compass-outline",
         value_fn=lambda h: h.swell_direction,
         compass_fn=lambda h: h.swell_direction,
+        corridor_fn=lambda c: c.swell_corridor,
     ),
     HourSensorDescription(
         key="wind_speed",
@@ -103,6 +106,7 @@ HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
         icon="mdi:weather-windy",
         value_fn=lambda h: h.wind_direction,
         compass_fn=lambda h: h.wind_direction,
+        corridor_fn=lambda c: c.wind_corridor,
     ),
     HourSensorDescription(
         key="water_temperature",
@@ -169,9 +173,17 @@ class CurrentHourSensor(SurfEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         hour = self._hour
-        if hour is None or self.entity_description.compass_fn is None:
+        desc = self.entity_description
+        if hour is None or desc.compass_fn is None:
             return None
-        return {"compass": compass(self.entity_description.compass_fn(hour))}
+        angle = desc.compass_fn(hour)
+        attrs: dict[str, Any] = {"compass": compass(angle)}
+        if desc.corridor_fn is not None:
+            # 1/0 instead of bool so compass-card's dynamic_style can use it
+            corridor = desc.corridor_fn(self.coordinator.criteria)
+            attrs["in_corridor"] = int(in_corridor(angle, corridor))
+            attrs["compass_image"] = compass_url(self.coordinator.config_entry.entry_id)
+        return attrs
 
 
 class NextSessionSensor(SurfEntity, SensorEntity):
@@ -194,6 +206,7 @@ class NextSessionSensor(SurfEntity, SensorEntity):
         data = self.coordinator.data
         sessions = data.upcoming_sessions(dt_util.utcnow())
         attrs: dict[str, Any] = {
+            "windy_url": self.coordinator.windy_url,
             "sessions": [
                 {**s.as_dict(), "text": self.coordinator.describe_session(s, data.tz)}
                 for s in sessions
@@ -232,6 +245,7 @@ class ForecastSensor(SurfEntity, SensorEntity):
         data = self.coordinator.data
         return {
             "wind_unit": self.coordinator.wind_unit,
+            "windy_url": self.coordinator.windy_url,
             "daily": [
                 {
                     **d.as_dict(),

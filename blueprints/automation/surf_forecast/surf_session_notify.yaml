@@ -3,7 +3,8 @@ blueprint:
   description: >-
     Schickt eine Push-Nachricht, sobald die Surf-Forecast-Integration eine neue
     Session findet, die deine Bedingungen erfüllt (Event `surf_forecast_session`).
-    Jede Session wird nur einmal gemeldet.
+    Jede Session wird nur einmal gemeldet. Tippen auf die Nachricht öffnet
+    den Spot auf Windy.
   domain: automation
   source_url: https://github.com/butzifutz/ha-surf-forecast/blob/main/blueprints/automation/surf_forecast/surf_session_notify.yaml
   input:
@@ -75,3 +76,7 @@ actions:
       {{ trigger.event.data.description }}
       (Wind aus {{ trigger.event.data.wind_direction }},
       Swell aus {{ trigger.event.data.swell_direction }})
+    data:
+      # Tippen auf die Nachricht öffnet Windy (iOS: url, Android: clickAction)
+      url: "{{ trigger.event.data.windy_url }}"
+      clickAction: "{{ trigger.event.data.windy_url }}"
