@@ -125,7 +125,7 @@ content: |
   |:--|:--|:--|:--|:--|:--|:--|
   {{% for d in state_attr(f, 'daily') or [] -%}}
   {{% set dt = as_datetime(d.day) -%}}
-  | {{{{ wd[dt.weekday()] }}}} {{{{ dt.strftime('%d.%m.') }}}} | {{{{ d.wave_min }}}}–{{{{ d.wave_max }}}} m | {{{{ d.period_max }}}} s | {{{{ d.wave_compass }}}} | {{{{ d.wind_min | round(0) }}}}–{{{{ d.wind_max | round(0) }}}} {{{{ u }}}} {{{{ d.wind_compass }}}} | {{{{ '⭐' * (d.max_rating | round(0) | int) }}}} ({{{{ d.max_rating }}}}) | {{{{ d.good_hours ~ ' h' if d.good_hours else '–' }}}} |
+  | {{{{ wd[dt.weekday()] }}}} {{{{ dt.strftime('%d.%m.') }}}} | {{{{ d.wave_min }}}}–{{{{ d.wave_max }}}} m | {{{{ d.period_max }}}} s | {{{{ d.wave_compass }}}} | {{{{ d.wind_min | round(0) }}}}–{{{{ d.wind_max | round(0) }}}} {{{{ u }}}} {{{{ d.wind_compass }}}} | {{{{ ('⭐' * (d.max_rating | round(0) | int)) ~ ' (' ~ d.max_rating ~ ')' if d.max_rating else '–' }}}} | {{{{ d.good_hours ~ ' h' if d.good_hours else '–' }}}} |
   {{% endfor %}}
 
   **Nächste Session:** {{{{ state_attr('{ctx.next_session}', 'text') or 'keine in Sicht 😴' }}}}
