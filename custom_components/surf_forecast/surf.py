@@ -39,17 +39,24 @@ class HourPoint:
 class SurfCriteria:
     """User-defined conditions for a surfable hour.
 
+    Made for wind-driven spots (e.g. the Baltic Sea): the wind corridor is the
+    direction the wind has to come FROM to build waves at the spot, and it has
+    to blow between ``wind_min`` and ``wind_max``. Below ``glassy_max`` the
+    direction doesn't matter (clean-up session after a blow, as long as the
+    waves are still there).
+
     Corridors are given as (from, to) in degrees, clockwise, and may wrap
     around north (e.g. 300 -> 60). ``None`` means "any direction".
     """
 
-    wave_min: float = 0.8
+    wave_min: float = 0.6
     wave_max: float = 2.5
-    period_min: float = 7.0
-    wind_max: float = 15.0
+    period_min: float = 4.0
+    wind_min: float = 0.0
+    wind_max: float = 30.0
     wind_corridor: tuple[float, float] | None = None
-    # below this speed the wind direction doesn't matter (glassy conditions)
     glassy_max: float = 5.0
+    # direction the waves have to come from (wave or swell, see use_swell)
     swell_corridor: tuple[float, float] | None = None
     use_swell: bool = False
     daylight_only: bool = True
@@ -88,6 +95,7 @@ class DaySummary:
     wave_min: float | None
     wave_max: float | None
     period_max: float | None
+    wave_direction: float | None
     swell_direction: float | None
     wind_min: float | None
     wind_max: float | None
@@ -210,61 +218,44 @@ def _period(point: HourPoint, criteria: SurfCriteria) -> float | None:
     return point.wave_period
 
 
-def _direction(point: HourPoint) -> float | None:
-    return point.swell_direction if point.swell_direction is not None else point.wave_direction
+def _direction(point: HourPoint, criteria: SurfCriteria | None = None) -> float | None:
+    """Wave direction used for the corridor (swell only if configured)."""
+    if criteria is not None and criteria.use_swell and point.swell_direction is not None:
+        return point.swell_direction
+    return point.wave_direction
 
 
 def wind_ok(point: HourPoint, criteria: SurfCriteria) -> bool:
     if point.wind_speed is None:
         return True  # no wind data -> don't block
-    if point.wind_speed > criteria.wind_max:
-        return False
     if point.wind_speed <= criteria.glassy_max:
-        return True
+        return True  # clean-up: direction and minimum don't matter
+    if not criteria.wind_min <= point.wind_speed <= criteria.wind_max:
+        return False
     return in_corridor(point.wind_direction, criteria.wind_corridor)
 
 
+def _clip(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
 def rate_hour(point: HourPoint, criteria: SurfCriteria) -> float:
-    """Return a 0..5 rating for one hour (0 = flat/blown out, 5 = epic)."""
-    height = _height(point, criteria)
-    if height is None or height < criteria.wave_min * 0.5:
+    """Rating of a surfable hour: 1 (just about) .. 5 (best). Not surfable = 0.
+
+    Waves count most (higher within the configured range is better), then
+    period (3 s -> 0, 8 s and more -> full) and a penalty for very strong wind.
+    """
+    if not hour_matches(point, criteria):
         return 0.0
-
-    # waves: 0..2 points, best in the middle of the configured corridor
-    if criteria.wave_min <= height <= criteria.wave_max:
-        span = max(criteria.wave_max - criteria.wave_min, 0.01)
-        centre = criteria.wave_min + span / 2
-        wave_score = 2.0 - abs(height - centre) / (span / 2) * 0.5
-    elif height < criteria.wave_min:
-        wave_score = height / criteria.wave_min
-    else:
-        wave_score = max(0.0, 1.5 - (height - criteria.wave_max) / max(criteria.wave_max, 0.1))
-
-    # period: 0..1.5 points
-    period = _period(point, criteria) or 0.0
-    if criteria.period_min > 0:
-        period_score = min(1.5, max(0.0, period / criteria.period_min) * 1.0)
-        if period >= criteria.period_min * 1.4:
-            period_score = 1.5
-    else:
-        period_score = 1.5
-
-    # wind: 0..1.5 points
-    speed = point.wind_speed
-    if speed is None:
-        wind_score = 0.75
-    elif speed <= criteria.glassy_max:
-        wind_score = 1.5
-    elif in_corridor(point.wind_direction, criteria.wind_corridor) and speed <= criteria.wind_max:
-        wind_score = 1.5 - 0.5 * (speed - criteria.glassy_max) / max(
-            criteria.wind_max - criteria.glassy_max, 0.1
-        )
-    elif speed <= criteria.wind_max:
-        wind_score = 0.5
-    else:
-        wind_score = max(0.0, 0.5 - (speed - criteria.wind_max) / max(criteria.wind_max, 0.1))
-
-    return round(max(0.0, min(5.0, wave_score + period_score + wind_score)), 1)
+    height = _height(point, criteria) or 0.0
+    span = criteria.wave_max - criteria.wave_min
+    wave_score = _clip((height - criteria.wave_min) / span) if span > 0 else 1.0
+    period_score = _clip(((_period(point, criteria) or 0.0) - 3.0) / 5.0)
+    speed = point.wind_speed or 0.0
+    strong = criteria.wind_max - criteria.glassy_max
+    wind_score = 1.0 - 0.7 * _clip((speed - criteria.glassy_max) / strong) if strong > 0 else 1.0
+    score = 0.6 * wave_score + 0.25 * period_score + 0.15 * wind_score
+    return round(1.0 + 4.0 * score, 1)
 
 
 def hour_matches(point: HourPoint, criteria: SurfCriteria) -> bool:
@@ -277,7 +268,7 @@ def hour_matches(point: HourPoint, criteria: SurfCriteria) -> bool:
     if criteria.period_min > 0 and (period is None or period < criteria.period_min):
         return False
     if criteria.swell_corridor is not None and not in_corridor(
-        _direction(point), criteria.swell_corridor
+        _direction(point, criteria), criteria.swell_corridor
     ):
         return False
     return wind_ok(point, criteria)
@@ -351,8 +342,11 @@ def summarize_days(
                 wave_min=round(min(heights), 2) if heights else None,
                 wave_max=round(max(heights), 2) if heights else None,
                 period_max=round(max(periods), 1) if periods else None,
+                wave_direction=_mean_angle(
+                    [p.wave_direction for p in relevant if p.wave_direction is not None]
+                ),
                 swell_direction=_mean_angle(
-                    [d for p in relevant if (d := _direction(p)) is not None]
+                    [p.swell_direction for p in relevant if p.swell_direction is not None]
                 ),
                 wind_min=round(min(winds), 1) if winds else None,
                 wind_max=round(max(winds), 1) if winds else None,
@@ -360,7 +354,7 @@ def summarize_days(
                     [p.wind_direction for p in relevant if p.wind_direction is not None]
                 ),
                 water_temperature=round(sum(temps) / len(temps), 1) if temps else None,
-                max_rating=max((p.rating for p in relevant), default=0.0),
+                max_rating=max((p.rating for p in points), default=0.0),
                 good_hours=sum(1 for p in points if p.match),
             )
         )
@@ -369,8 +363,8 @@ def summarize_days(
 
 def evaluate(hours: list[HourPoint], criteria: SurfCriteria, tz: timezone) -> SurfData:
     for point in hours:
-        point.rating = rate_hour(point, criteria)
         point.match = hour_matches(point, criteria)
+        point.rating = rate_hour(point, criteria)
     return SurfData(
         hours=hours,
         sessions=find_sessions(hours, criteria),
@@ -395,6 +389,7 @@ def hour_as_attr(point: HourPoint, tz: timezone) -> dict[str, Any]:
         "time": point.time.astimezone(tz).isoformat(),
         "wave": point.wave_height,
         "period": point.wave_period,
+        "wave_dir": point.wave_direction,
         "swell": point.swell_height,
         "swell_period": point.swell_period,
         "swell_dir": point.swell_direction,

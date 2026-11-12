@@ -30,6 +30,7 @@ from .const import (
     CONF_WIND_DIR_FROM,
     CONF_WIND_DIR_TO,
     CONF_WIND_MAX,
+    CONF_WIND_MIN,
     CONF_WIND_UNIT,
     DEFAULT_OPTIONS,
     DOMAIN,
@@ -65,13 +66,14 @@ def options_schema(options: dict[str, Any]) -> vol.Schema:
             vol.Required(CONF_WAVE_MIN, default=o[CONF_WAVE_MIN]): _number(0, 15, 0.1, "m"),
             vol.Required(CONF_WAVE_MAX, default=o[CONF_WAVE_MAX]): _number(0, 15, 0.1, "m"),
             vol.Required(CONF_PERIOD_MIN, default=o[CONF_PERIOD_MIN]): _number(0, 25, 0.5, "s"),
-            vol.Required(CONF_USE_SWELL, default=o[CONF_USE_SWELL]): selector.BooleanSelector(),
-            vol.Required(CONF_SWELL_DIR_FROM, default=o[CONF_SWELL_DIR_FROM]): _DIRECTION,
-            vol.Required(CONF_SWELL_DIR_TO, default=o[CONF_SWELL_DIR_TO]): _DIRECTION,
-            vol.Required(CONF_WIND_MAX, default=o[CONF_WIND_MAX]): _number(0, 100, 1, unit),
             vol.Required(CONF_WIND_DIR_FROM, default=o[CONF_WIND_DIR_FROM]): _DIRECTION,
             vol.Required(CONF_WIND_DIR_TO, default=o[CONF_WIND_DIR_TO]): _DIRECTION,
+            vol.Required(CONF_WIND_MIN, default=o[CONF_WIND_MIN]): _number(0, 100, 1, unit),
+            vol.Required(CONF_WIND_MAX, default=o[CONF_WIND_MAX]): _number(0, 100, 1, unit),
             vol.Required(CONF_GLASSY_MAX, default=o[CONF_GLASSY_MAX]): _number(0, 50, 1, unit),
+            vol.Required(CONF_SWELL_DIR_FROM, default=o[CONF_SWELL_DIR_FROM]): _DIRECTION,
+            vol.Required(CONF_SWELL_DIR_TO, default=o[CONF_SWELL_DIR_TO]): _DIRECTION,
+            vol.Required(CONF_USE_SWELL, default=o[CONF_USE_SWELL]): selector.BooleanSelector(),
             vol.Required(CONF_MIN_DURATION, default=o[CONF_MIN_DURATION]): _number(1, 12, 1, "h"),
             vol.Required(
                 CONF_DAYLIGHT_ONLY, default=o[CONF_DAYLIGHT_ONLY]
@@ -92,6 +94,8 @@ def validate_options(user_input: dict[str, Any]) -> dict[str, str]:
     errors: dict[str, str] = {}
     if user_input[CONF_WAVE_MIN] > user_input[CONF_WAVE_MAX]:
         errors[CONF_WAVE_MAX] = "wave_range"
+    if user_input[CONF_WIND_MIN] > user_input[CONF_WIND_MAX]:
+        errors[CONF_WIND_MAX] = "wind_range"
     for key_from, key_to in (
         (CONF_WIND_DIR_FROM, CONF_WIND_DIR_TO),
         (CONF_SWELL_DIR_FROM, CONF_SWELL_DIR_TO),

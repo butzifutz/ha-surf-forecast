@@ -19,9 +19,9 @@ _spec.loader.exec_module(cards)
 CTX = cards.CardContext(
     title='Peter\'s "Spot"',
     wind_direction="sensor.spot_windrichtung",
-    swell_direction="sensor.spot_swell_richtung",
+    wave_direction="sensor.spot_wellenrichtung",
     wind_speed="sensor.spot_windgeschwindigkeit",
-    swell_height="sensor.spot_swell_hohe",
+    wave_height="sensor.spot_wellenhohe",
     forecast="sensor.spot_7_tage_forecast",
     next_session="sensor.spot_nachste_session",
     compass_image="/api/surf_forecast/compass/abc.svg",
@@ -36,20 +36,21 @@ def test_compass_card():
     wind, swell = card["indicator_sensors"]
     assert wind["sensor"] == CTX.wind_direction
     assert wind["indicator"]["dynamic_style"]["attribute"] == "in_corridor"
-    assert swell["sensor"] == CTX.swell_direction
+    assert swell["sensor"] == CTX.wave_direction
     # no period: it made the value text too long
-    assert [v["sensor"] for v in card["value_sensors"]] == [CTX.wind_speed, CTX.swell_height]
+    assert [v["sensor"] for v in card["value_sensors"]] == [CTX.wind_speed, CTX.wave_height]
     assert card["compass"]["circle"]["background_image"] == CTX.compass_image
     assert card["tap_action"] == {"action": "url", "url": CTX.windy_url}
 
 
-def test_swell_chart_card():
-    card = yaml.safe_load(cards.swell_chart_card(CTX))
+def test_wave_chart_card():
+    card = yaml.safe_load(cards.wave_chart_card(CTX))
     assert card["type"] == "custom:apexcharts-card"
-    assert [s["name"] for s in card["series"]] == ["Swell (m)", "Periode (s)", "Surfbar"]
+    assert [s["name"] for s in card["series"]] == ["Welle (m)", "Wind", "Periode (s)", "Surfbar"]
     assert all(s["entity"] == CTX.forecast for s in card["series"])
-    assert "h.swell_period" in card["series"][1]["data_generator"]
-    assert card["series"][2]["opacity"] == 0.3
+    assert "h.wave" in card["series"][0]["data_generator"]
+    assert "h.wind" in card["series"][1]["data_generator"]
+    assert card["series"][3]["opacity"] == 0.3
 
 
 def test_week_table_card():
@@ -58,6 +59,7 @@ def test_week_table_card():
     assert f"set f = '{CTX.forecast}'" in card["content"]
     assert CTX.next_session in card["content"]
     assert "{{ wd[dt.weekday()] }}" in card["content"]
+    assert "d.wave_compass" in card["content"]
 
 
 def test_notification_contains_all_cards():

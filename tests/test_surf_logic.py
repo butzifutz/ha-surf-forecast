@@ -113,7 +113,7 @@ def test_wave_corridor_period_daylight_and_min_duration():
         is_day=lambda i: 0 if i == 7 else 1,
     )
     hours, tz = surf.parse_responses(marine, weather)
-    data = surf.evaluate(hours, surf.SurfCriteria(min_duration=2), tz)
+    data = surf.evaluate(hours, surf.SurfCriteria(min_duration=2, period_min=7), tz)
     assert [h.match for h in hours] == [False, True, True, False, True, False, True, False]
     # runs: [1,2] -> session, [4] too short, [6] too short
     assert [s.hours for s in data.sessions] == [2]
@@ -138,15 +138,49 @@ def test_daily_summary_groups_by_local_day():
     assert data.days[1].wind_direction == 100
 
 
-def test_rating_prefers_good_conditions():
-    criteria = surf.SurfCriteria(wind_corridor=(45, 135))
+def test_wind_must_blow_from_corridor_between_min_and_max():
+    # Baltic: onshore NE wind (45°) builds the waves; offshore SW wind doesn't count
+    marine, weather = _responses(
+        6,
+        wind_direction_10m=lambda i: [45, 45, 45, 45, 225, 225][i],
+        wind_speed_10m=lambda i: [6, 12, 25, 35, 12, 3][i],
+    )
+    hours, tz = surf.parse_responses(marine, weather)
+    criteria = surf.SurfCriteria(
+        wind_corridor=(0, 90), wind_min=10, wind_max=30, glassy_max=4, min_duration=1
+    )
+    surf.evaluate(hours, criteria, tz)
+    # too weak, ok, ok, too strong, wrong direction, clean-up (calm, waves still there)
+    assert [h.match for h in hours] == [False, True, True, False, False, True]
+
+
+def test_rating_zero_unless_surfable_and_higher_waves_rate_higher():
+    criteria = surf.SurfCriteria(wave_min=0.5, wave_max=2.0, wind_corridor=(0, 90), wind_max=30)
     t = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    good = surf.HourPoint(time=t, wave_height=1.6, wave_period=13, wind_speed=3, wind_direction=280)
-    blown = surf.HourPoint(time=t, wave_height=1.6, wave_period=13, wind_speed=30, wind_direction=280)
-    flat = surf.HourPoint(time=t, wave_height=0.2, wave_period=4, wind_speed=0)
-    assert surf.rate_hour(good, criteria) == 5.0
-    assert surf.rate_hour(blown, criteria) < 4
-    assert surf.rate_hour(flat, criteria) == 0.0
+
+    def hour(wave, period=5.0, wind=15.0, direction=45.0):
+        return surf.HourPoint(
+            time=t, wave_height=wave, wave_period=period, wind_speed=wind, wind_direction=direction
+        )
+
+    small, big = hour(0.6), hour(1.8)
+    for h in (small, big):
+        assert 1.0 <= surf.rate_hour(h, criteria) <= 5.0
+    assert surf.rate_hour(big, criteria) > surf.rate_hour(small, criteria)
+    assert surf.rate_hour(hour(1.8, period=8), criteria) > surf.rate_hour(big, criteria)
+    assert surf.rate_hour(hour(1.8, direction=225), criteria) == 0.0  # offshore
+    assert surf.rate_hour(hour(0.3), criteria) == 0.0  # too small
+    best = hour(2.0, period=9, wind=4)
+    assert surf.rate_hour(best, criteria) == 5.0
+
+
+def test_wave_direction_corridor_uses_mean_wave_direction():
+    marine, weather = _responses(2, wave_direction=lambda i: [60.0, 250.0][i])
+    hours, tz = surf.parse_responses(marine, weather)
+    criteria = surf.SurfCriteria(swell_corridor=(0, 120), min_duration=1)
+    surf.evaluate(hours, criteria, tz)
+    # swell direction (285°) is ignored unless use_swell is set
+    assert [h.match for h in hours] == [True, False]
 
 
 def test_current_hour_and_upcoming_sessions():

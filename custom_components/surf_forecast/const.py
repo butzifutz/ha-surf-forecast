@@ -23,6 +23,7 @@ CONF_WAVE_MIN = "wave_min"
 CONF_WAVE_MAX = "wave_max"
 CONF_PERIOD_MIN = "period_min"
 CONF_USE_SWELL = "use_swell"
+CONF_WIND_MIN = "wind_min"
 CONF_WIND_MAX = "wind_max"
 CONF_GLASSY_MAX = "glassy_max"
 CONF_WIND_DIR_FROM = "wind_dir_from"
@@ -40,11 +41,12 @@ WIND_UNITS = {"kn": "kn", "kmh": "km/h", "ms": "m/s"}
 
 DEFAULT_OPTIONS = {
     CONF_WIND_UNIT: "kn",
-    CONF_WAVE_MIN: 0.8,
+    CONF_WAVE_MIN: 0.6,
     CONF_WAVE_MAX: 2.5,
-    CONF_PERIOD_MIN: 7.0,
+    CONF_PERIOD_MIN: 4.0,
     CONF_USE_SWELL: False,
-    CONF_WIND_MAX: 15.0,
+    CONF_WIND_MIN: 0.0,
+    CONF_WIND_MAX: 30.0,
     CONF_GLASSY_MAX: 5.0,
     # -1 = corridor disabled (any direction)
     CONF_WIND_DIR_FROM: -1,

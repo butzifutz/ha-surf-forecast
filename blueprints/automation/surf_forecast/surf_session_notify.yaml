@@ -75,7 +75,7 @@ actions:
     message: >-
       {{ trigger.event.data.description }}
       (Wind aus {{ trigger.event.data.wind_direction }},
-      Swell aus {{ trigger.event.data.swell_direction }})
+      Welle aus {{ trigger.event.data.wave_direction }})
     data:
       # Tippen auf die Nachricht öffnet Windy (iOS: url, Android: clickAction)
       url: "{{ trigger.event.data.windy_url }}"

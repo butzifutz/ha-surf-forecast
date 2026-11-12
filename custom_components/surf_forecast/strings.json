@@ -11,28 +11,34 @@
       },
       "conditions": {
         "title": "Conditions",
-        "description": "Define what surfable means for you. An hour counts when all conditions hold; consecutive hours form a session.",
+        "description": "Define when your spot is surfable. An hour counts when all conditions hold; consecutive hours form a session.",
         "data": {
           "wind_unit": "Wind speed unit",
           "wave_min": "Minimum wave height",
           "wave_max": "Maximum wave height",
           "period_min": "Minimum wave period",
-          "use_swell": "Use swell instead of total wave height",
-          "swell_dir_from": "Swell direction from (-1 = any)",
-          "swell_dir_to": "Swell direction to (-1 = any)",
+          "use_swell": "Rate swell instead of total waves (ocean spots)",
+          "swell_dir_from": "Wave direction from (-1 = any)",
+          "swell_dir_to": "Wave direction to (-1 = any)",
           "wind_max": "Maximum wind speed",
           "wind_dir_from": "Wind corridor from (-1 = any)",
           "wind_dir_to": "Wind corridor to (-1 = any)",
-          "glassy_max": "Below this wind speed the direction does not matter",
+          "glassy_max": "Clean-up: below this wind speed only the waves count",
           "min_duration": "Minimum session length",
           "daylight_only": "Daylight only",
           "notify_service": "Notify service (e.g. notify.mobile_app_my_phone)",
           "notify_days": "Notification horizon",
-          "notify_min_rating": "Minimum rating for notifications (0-5)"
+          "notify_min_rating": "Minimum rating for notifications (0-5)",
+          "wind_min": "Minimum wind speed"
         },
         "data_description": {
-          "wind_dir_from": "Direction the wind comes FROM (0 = N, 90 = E). Clockwise from → to, e.g. 90 → 200 for offshore at a west-facing beach.",
-          "swell_dir_from": "Direction the swell comes from, clockwise from → to.",
+          "wind_dir_from": "Direction the wind has to come FROM to build waves at your spot (0 = N, 90 = E). Clockwise from → to, e.g. 0 → 90 for wind from N to E.",
+          "wind_min": "Wind needed to build or keep the waves.",
+          "wind_max": "Above this it is blown out.",
+          "glassy_max": "When the wind drops after a blow and the waves are still there, the hour counts regardless of direction.",
+          "swell_dir_from": "Direction the waves have to come from (mean wave direction, clockwise from → to).",
+          "use_swell": "Keep off for wind-driven seas like the Baltic.",
+          "period_min": "Baltic: usually 4-6 s. 0 = ignore period.",
           "notify_service": "Leave empty if you only use the surf_forecast_session event / blueprint."
         }
       }
@@ -42,7 +48,8 @@
       "no_marine_data": "No wave data for this location. Move the pin a bit further out to sea.",
       "wave_range": "Maximum wave height must be greater than the minimum.",
       "corridor_incomplete": "Set both corridor bounds or both to -1.",
-      "notify_service": "The service must start with notify."
+      "notify_service": "The service must start with notify.",
+      "wind_range": "Maximum wind must be greater than minimum wind."
     },
     "abort": {
       "already_configured": "This spot is already configured."
@@ -52,28 +59,34 @@
     "step": {
       "init": {
         "title": "Conditions",
-        "description": "Define what surfable means for you. An hour counts when all conditions hold; consecutive hours form a session.",
+        "description": "Define when your spot is surfable. An hour counts when all conditions hold; consecutive hours form a session.",
         "data": {
           "wind_unit": "Wind speed unit",
           "wave_min": "Minimum wave height",
           "wave_max": "Maximum wave height",
           "period_min": "Minimum wave period",
-          "use_swell": "Use swell instead of total wave height",
-          "swell_dir_from": "Swell direction from (-1 = any)",
-          "swell_dir_to": "Swell direction to (-1 = any)",
+          "use_swell": "Rate swell instead of total waves (ocean spots)",
+          "swell_dir_from": "Wave direction from (-1 = any)",
+          "swell_dir_to": "Wave direction to (-1 = any)",
           "wind_max": "Maximum wind speed",
           "wind_dir_from": "Wind corridor from (-1 = any)",
           "wind_dir_to": "Wind corridor to (-1 = any)",
-          "glassy_max": "Below this wind speed the direction does not matter",
+          "glassy_max": "Clean-up: below this wind speed only the waves count",
           "min_duration": "Minimum session length",
           "daylight_only": "Daylight only",
           "notify_service": "Notify service (e.g. notify.mobile_app_my_phone)",
           "notify_days": "Notification horizon",
-          "notify_min_rating": "Minimum rating for notifications (0-5)"
+          "notify_min_rating": "Minimum rating for notifications (0-5)",
+          "wind_min": "Minimum wind speed"
         },
         "data_description": {
-          "wind_dir_from": "Direction the wind comes FROM (0 = N, 90 = E). Clockwise from → to, e.g. 90 → 200 for offshore at a west-facing beach.",
-          "swell_dir_from": "Direction the swell comes from, clockwise from → to.",
+          "wind_dir_from": "Direction the wind has to come FROM to build waves at your spot (0 = N, 90 = E). Clockwise from → to, e.g. 0 → 90 for wind from N to E.",
+          "wind_min": "Wind needed to build or keep the waves.",
+          "wind_max": "Above this it is blown out.",
+          "glassy_max": "When the wind drops after a blow and the waves are still there, the hour counts regardless of direction.",
+          "swell_dir_from": "Direction the waves have to come from (mean wave direction, clockwise from → to).",
+          "use_swell": "Keep off for wind-driven seas like the Baltic.",
+          "period_min": "Baltic: usually 4-6 s. 0 = ignore period.",
           "notify_service": "Leave empty if you only use the surf_forecast_session event / blueprint."
         }
       }
@@ -83,7 +96,8 @@
       "no_marine_data": "No wave data for this location. Move the pin a bit further out to sea.",
       "wave_range": "Maximum wave height must be greater than the minimum.",
       "corridor_incomplete": "Set both corridor bounds or both to -1.",
-      "notify_service": "The service must start with notify."
+      "notify_service": "The service must start with notify.",
+      "wind_range": "Maximum wind must be greater than minimum wind."
     }
   },
   "selector": {
@@ -143,9 +157,6 @@
     "binary_sensor": {
       "surfable_now": {
         "name": "Surfable now"
-      },
-      "session_upcoming": {
-        "name": "Session upcoming"
       }
     },
     "button": {

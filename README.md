@@ -1,8 +1,12 @@
 # 🏄 Surf Forecast für Home Assistant
 
 Eine Custom Integration mit Surf-Vorhersage für die nächsten 7 Tage, stündlich und je Spot. Sie
-meldet sich, wenn **Welle, Periode, Windstärke und Windrichtung (Korridor)** zu dir passen, damit
-du keine Session verpasst.
+meldet sich, wenn **Welle, Windrichtung, Windstärke und Periode** zu dir passen, damit du keine
+Session verpasst.
+
+Gebaut für **windgetriebene Spots wie an der Ostsee**: Dort gibt es kaum Swell, die Welle entsteht
+aus dem Wind. Der Wind muss deshalb aus der richtigen Richtung und mit genug Stärke kommen. Für
+Ozean-Spots lässt sich auf Swell umschalten.
 
 **Datenquelle:** [Open-Meteo](https://open-meteo.com/) (kostenlos, kein API-Key, CC BY 4.0)
 
@@ -40,13 +44,13 @@ am Stück (mindestens *Mindestdauer*) ergeben eine **Session**.
 
 | Option | Bedeutung |
 |---|---|
-| Wellenhöhe min./max. | Korridor für die signifikante Wellenhöhe (m) |
-| Periode min. | Mindestperiode (s). Kurze Periode heißt Windsee, lange heißt sauberer Swell |
-| Swell statt Gesamt-Wellenhöhe | Nur die Swell-Komponente bewerten (ohne Windsee) |
-| Swell-Richtung von/bis | Korridor, aus dem der Swell kommen muss (−1 = egal) |
-| Wind max. | Maximale Windgeschwindigkeit (Einheit wählbar: kn, km/h, m/s) |
-| Wind-Korridor von/bis | Richtung, **aus der** der Wind kommen darf (−1 = egal) |
-| Richtung egal bis | Unterhalb dieser Windstärke ist die Richtung egal (glassy) |
+| Wellenhöhe min./max. | Korridor für die Wellenhöhe am Spot (Gesamtwelle inkl. Windsee, in m) |
+| Periode min. | Mindestperiode in s. Ostsee: meist 4–6 s. 0 = egal |
+| Wind-Korridor von/bis | Richtung, **aus der** der Wind kommen muss, damit er an deinem Spot Welle macht (−1 = egal) |
+| Wind min./max. | Der Wind muss mindestens so stark sein, dass Welle entsteht, und darf höchstens so stark sein, dass es nicht verblasen ist (Einheit wählbar: kn, km/h, m/s) |
+| Nachlauf bis | Unterhalb dieser Windstärke zählt nur noch die Welle, egal woher der Wind kommt. Das ist die Clean-up-Session, wenn der Wind nach einem Sturm einschläft und die Welle noch steht |
+| Wellenrichtung von/bis | Optional: Richtung, aus der die Wellen kommen müssen (−1 = egal) |
+| Swell statt Gesamtwelle | Für Ozean-Spots: Swell-Höhe, -Periode und -Richtung bewerten. Für die Ostsee aus lassen |
 | Mindestdauer | So viele Stunden am Stück müssen passen |
 | Nur bei Tageslicht | Nachtstunden ignorieren |
 | Benachrichtigungsdienst | z. B. `notify.mobile_app_mein_handy` (optional) |
@@ -56,35 +60,41 @@ am Stück (mindestens *Mindestdauer*) ergeben eine **Session**.
 **Korridore** laufen im Uhrzeigersinn von → bis und dürfen über Norden gehen (z. B. 300 → 60).
 Richtungen sind meteorologisch: 0° = aus Nord, 90° = aus Ost, 180° = aus Süd, 270° = aus West.
 
-> Beispiel **Offshore**: Ein Strand, der nach Westen aufs Meer schaut (z. B. Sylt, Westküste
-> Frankreich), hat Offshore-Wind aus Osten. Ein Wind-Korridor **45 → 135** heißt Wind aus NO bis SO.
+> Beispiel **Ostsee**: Ein Strand, der nach Nordosten aufs offene Wasser schaut, bekommt Welle bei
+> Wind aus N bis O. Wind-Korridor **0 → 90**, Wind min. **12 kn**, max. **30 kn**, Nachlauf bis
+> **6 kn**. Ablandiger Wind aus SW zählt dann nicht, egal wie stark er ist.
+
+Die **Wellenrichtung** im Modell ist an der Ostsee oft unzuverlässig, weil das Modellraster in
+Küstennähe grob ist. Lass den Korridor dafür am besten auf −1 und verlass dich auf die
+Windrichtung. Prüf am Spot, ob die Werte passen.
 
 Wenn du die Windeinheit änderst, werden die Schwellwerte **nicht** umgerechnet. Pass sie einfach
 im selben Dialog mit an.
 
 ### Rating (0–5)
 
-Jede Stunde bekommt ein Rating aus drei Teilen:
+- **0:** Die Stunde ist nicht surfbar.
+- **1–5:** Die Stunde ist surfbar. Wie gut, hängt vor allem von der Wellenhöhe ab: Je weiter
+  oben in deinem Korridor, desto besser (60 %). Dazu kommen die Periode (25 %; 3 s zählt nichts,
+  ab 8 s voll) und ein Abzug für sehr starken Wind (15 %).
 
-- Welle (0–2): am besten in der Mitte deines Korridors
-- Periode (0–1,5): voll ab 1,4 × Mindestperiode
-- Wind (0–1,5): glassy oder offshore im Korridor ist gut, onshore oder zu stark schlecht
+Der Sensor *Surf-Rating* zeigt das Rating der aktuellen Stunde. Sessions und Tageswerte
+verwenden das beste Rating im jeweiligen Zeitraum.
 
 ## Entitäten (pro Spot)
 
 | Entität | Inhalt |
 |---|---|
 | `sensor.<spot>_wave_height` / `_period` / `_direction` | Aktuelle Stunde (Gesamtwelle) |
-| `sensor.<spot>_swell_height` / `_period` / `_direction` | Aktueller Swell |
+| `sensor.<spot>_swell_height` / `_period` / `_direction` | Aktueller Swell (für die Bewertung nur mit „Swell statt Gesamtwelle“) |
 | `sensor.<spot>_wind_speed` / `_gusts` / `_direction` | Wind (Richtungen haben Attribut `compass`, z. B. „WNW“) |
-| | Wind- und Swell-Richtung haben zusätzlich `in_corridor` (1/0) und `compass_image` (siehe Kompass) |
+| | Wind- und Wellenrichtung haben zusätzlich `in_corridor` (1/0) und `compass_image` (siehe Kompass) |
 | `sensor.<spot>_water_temperature` | Wassertemperatur |
 | `sensor.<spot>_tide` | Wasserstand inkl. Gezeiten (nicht überall verfügbar) |
-| `sensor.<spot>_surf_rating` | Rating der aktuellen Stunde (0–5) |
-| `sensor.<spot>_next_session` | Startzeit der nächsten passenden Session. Attribute: `sessions`, `text`, `end`, … |
+| `sensor.<spot>_surf_rating` | Rating der aktuellen Stunde (0 = nicht surfbar, 1–5) |
+| `sensor.<spot>_next_session` | Startzeit der nächsten Session in den kommenden 7 Tagen. Attribute: `sessions` (alle), `text`, `end`, … |
 | `sensor.<spot>_7_day_forecast` | State: bestes Rating heute. Attribute: `daily` (7 Tage) und `hourly` (168 h) |
 | `binary_sensor.<spot>_surfable_now` | An, wenn die aktuelle Stunde passt |
-| `binary_sensor.<spot>_session_upcoming` | An, wenn innerhalb des Vorlaufs eine Session ansteht |
 | `button.<spot>_dashboard_cards` | Zeigt fertiges Dashboard-YAML für diesen Spot als Benachrichtigung |
 
 Die Entity-IDs richten sich nach der Systemsprache. Auf Deutsch heißen sie z. B.
@@ -123,26 +133,28 @@ period_max: 9.5
 wind_max: 11
 wind_unit: kn
 wind_direction: OSO
+wave_direction: NO
 swell_direction: WNW
 windy_url: https://www.windy.com/54.180/7.880?waves,54.180,7.880,10
 entry_id: ...
 ```
 
-Beispiel: morgendliche Zusammenfassung um 7 Uhr, wenn heute oder morgen etwas geht:
+Beispiel: morgendliche Zusammenfassung um 7 Uhr, wenn heute oder morgen eine Session ansteht:
 
 ```yaml
 triggers:
   - trigger: time
     at: "07:00:00"
 conditions:
-  - condition: state
-    entity_id: binary_sensor.hausstrand_session_upcoming
-    state: "on"
+  - condition: template
+    value_template: >-
+      {% set n = states('sensor.hausstrand_next_session') | as_datetime %}
+      {{ n is not none and n < today_at() + timedelta(days=2) }}
 actions:
   - action: notify.mobile_app_mein_handy
     data:
       title: "🏄 Surf-Check"
-      message: "{{ state_attr('binary_sensor.hausstrand_session_upcoming', 'sessions') | join('\n') }}"
+      message: "{{ state_attr('sensor.hausstrand_next_session', 'text') }}"
 ```
 
 ## Dashboard
@@ -150,7 +162,7 @@ actions:
 ### Karten automatisch erzeugen
 
 Du musst die Beispiele unten nicht von Hand anpassen. Beim Anlegen eines Spots erscheint in HA
-eine **Benachrichtigung** (🔔 links unten) mit fertigem YAML für Kompass, Swell-Verlauf und
+eine **Benachrichtigung** (🔔 links unten) mit fertigem YAML für Kompass, Welle-&-Wind-Chart und
 7-Tage-Tabelle. Darin stehen bereits deine echten Entity-IDs, egal in welcher Sprache dein HA
 läuft. Dashboard → ✏️ Bearbeiten → *Karte hinzufügen* → *Manuell* → Block einfügen.
 
@@ -161,187 +173,28 @@ Später kannst du das YAML jederzeit erneut erzeugen:
 - **Aktion** `surf_forecast.dashboard_cards` (optional mit `config_entry_id`). Mit
   Antwortvariable liefert sie das YAML als Daten zurück, statt eine Benachrichtigung zu zeigen.
 
-Die Beispiele unten verwenden die englischen Entity-IDs.
+Das erzeugte YAML enthält drei Karten:
 
-### Kompass: Wind, Swell und dein Korridor (mit [Compass Card](https://github.com/tomvanswam/compass-card) aus HACS)
+- **Kompass** (braucht die [Compass Card](https://github.com/tomvanswam/compass-card) aus HACS):
+  Der grüne Keil ist dein Wind-Korridor, der blaue Ring dein Wellenrichtungs-Korridor (falls
+  gesetzt). Der Pfeil zeigt, woher der Wind gerade kommt, und ist grün, wenn er im Korridor
+  liegt, sonst rot. Der blaue Punkt zeigt die Wellenrichtung. Darunter stehen Windgeschwindigkeit
+  und Wellenhöhe. Ein Tipp öffnet den Spot auf Windy.
+- **Welle & Wind 7 Tage** (braucht die [ApexCharts Card](https://github.com/RomRider/apexcharts-card)
+  aus HACS): Wellenhöhe, Wind und Periode pro Stunde, grüne Balken für die surfbaren Stunden.
+- **7-Tage-Tabelle** (Standard-Markdown-Karte, ohne HACS): pro Tag Welle, Periode, Wellenrichtung,
+  Wind und Rating sowie die nächste Session.
 
-Die Integration liefert pro Spot ein Hintergrundbild für den Kompass:
+Das Kompass-Hintergrundbild liegt unter `/api/surf_forecast/compass/<entry_id>.svg`. Die URL steht
+auch im Attribut `compass_image` des Windrichtungs-Sensors.
 
-- **grüner Keil:** dein Wind-Korridor (aus dieser Richtung darf der Wind kommen)
-- **blauer Ring:** dein Swell-Korridor
+Zeigt die App „Konfigurationsfehler“ bei Custom Cards: in der Companion App unter *Einstellungen →
+Companion App → Fehlerbehebung* den Frontend-Cache zurücksetzen.
 
-Die Pfeile zeigen, woher Wind und Swell gerade kommen. Liegt der Pfeil im grünen Keil, passt die
-Windrichtung, und der Pfeil wird zusätzlich grün statt rot.
-
-Bild-URL: `/api/surf_forecast/compass/<spot>.svg`, wobei `<spot>` der Name des Spots in
-Kleinbuchstaben mit `_` statt Leerzeichen ist (z. B. `hausstrand`, `st_peter_ording`). Die exakte
-URL steht auch im Attribut `compass_image` des Windrichtungs-Sensors.
-
-```yaml
-type: custom:compass-card
-header:
-  title:
-    value: Hausstrand
-  icon:
-    value: mdi:surfing
-indicator_sensors:
-  # Wind: Pfeil zeigt zur Mitte, sitzt also dort, woher der Wind kommt
-  - sensor: sensor.hausstrand_wind_direction
-    indicator:
-      image: arrow_inward
-      color: "#e53935"
-      dynamic_style:
-        sensor: sensor.hausstrand_wind_direction
-        attribute: in_corridor
-        bands:
-          - from_value: 1
-            color: "#43a047"
-  # Swell: blauer Punkt außen am Ring
-  - sensor: sensor.hausstrand_swell_direction
-    indicator:
-      image: circle
-      color: "#1e88e5"
-    state_abbreviation:
-      show: false
-    state_value:
-      show: false
-value_sensors:
-  - sensor: sensor.hausstrand_wind_speed
-  - sensor: sensor.hausstrand_swell_height
-    decimals: 1
-compass:
-  circle:
-    background_image: /api/surf_forecast/compass/hausstrand.svg
-    background_opacity: 1
-  north:
-    show: true
-tap_action:
-  action: url
-  url: https://www.windy.com/54.180/7.880?waves,54.180,7.880,10
-```
-
-Ein Tipp auf den Kompass öffnet den Spot auf Windy. Die URL für deinen Spot steht im Attribut
-`windy_url` des Sensors „Nächste Session“.
-
-### 7-Tage-Übersicht (Markdown-Karte, ohne Zusatzkarten)
-
-```yaml
-type: markdown
-title: 🏄 Hausstrand – 7 Tage
-content: |
-  {% set f = 'sensor.hausstrand_7_day_forecast' -%}
-  {% set u = state_attr(f, 'wind_unit') -%}
-  {% set wd = ['Mo','Di','Mi','Do','Fr','Sa','So'] -%}
-  | Tag | Welle | Periode | Swell | Wind | Rating | 🏄 |
-  |:--|:--|:--|:--|:--|:--|:--|
-  {% for d in state_attr(f, 'daily') or [] -%}
-  {% set dt = as_datetime(d.day) -%}
-  | {{ wd[dt.weekday()] }} {{ dt.strftime('%d.%m.') }} | {{ d.wave_min }}–{{ d.wave_max }} m | {{ d.period_max }} s | {{ d.swell_compass }} | {{ d.wind_min | round(0) }}–{{ d.wind_max | round(0) }} {{ u }} {{ d.wind_compass }} | {{ '⭐' * (d.max_rating | round(0) | int) }} ({{ d.max_rating }}) | {{ d.good_hours ~ ' h' if d.good_hours else '–' }} |
-  {% endfor %}
-
-  **Nächste Session:** {{ state_attr('sensor.hausstrand_next_session', 'text') or 'keine in Sicht 😴' }}
-```
-
-### Swell-Verlauf (mit [ApexCharts Card](https://github.com/RomRider/apexcharts-card) aus HACS)
-
-Swell-Höhe und -Periode über 7 Tage. Grüne Balken markieren die Stunden, die zu deinen
-Bedingungen passen.
-
-```yaml
-type: custom:apexcharts-card
-header:
-  show: true
-  title: Hausstrand – Swell 7 Tage
-graph_span: 7d
-span:
-  start: hour
-now:
-  show: true
-yaxis:
-  - id: height
-    min: 0
-    decimals: 1
-  - id: period
-    opposite: true
-    min: 0
-    decimals: 0
-series:
-  - entity: sensor.hausstrand_7_day_forecast
-    name: Swell (m)
-    yaxis_id: height
-    type: area
-    color: "#1e88e5"
-    data_generator: |
-      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.swell]);
-  - entity: sensor.hausstrand_7_day_forecast
-    name: Periode (s)
-    yaxis_id: period
-    type: line
-    color: "#fb8c00"
-    data_generator: |
-      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.swell_period]);
-  - entity: sensor.hausstrand_7_day_forecast
-    name: Surfbar
-    yaxis_id: height
-    type: column
-    color: "#43a047"
-    opacity: 0.3
-    data_generator: |
-      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.match ? h.swell : 0]);
-```
-
-### Welle & Wind (mit ApexCharts Card)
-
-```yaml
-type: custom:apexcharts-card
-header:
-  show: true
-  title: Welle & Wind – 7 Tage
-graph_span: 7d
-span:
-  start: hour
-yaxis:
-  - id: wave
-    min: 0
-    decimals: 1
-  - id: wind
-    opposite: true
-    min: 0
-    decimals: 0
-series:
-  - entity: sensor.hausstrand_7_day_forecast
-    name: Welle (m)
-    yaxis_id: wave
-    type: area
-    color: "#1e88e5"
-    data_generator: |
-      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.wave]);
-  - entity: sensor.hausstrand_7_day_forecast
-    name: Swell (m)
-    yaxis_id: wave
-    type: line
-    color: "#26c6da"
-    data_generator: |
-      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.swell]);
-  - entity: sensor.hausstrand_7_day_forecast
-    name: Wind
-    yaxis_id: wind
-    type: line
-    color: "#9e9e9e"
-    data_generator: |
-      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.wind]);
-  - entity: sensor.hausstrand_7_day_forecast
-    name: Surfbar
-    yaxis_id: wave
-    type: column
-    color: "#43a047"
-    opacity: 0.3
-    data_generator: |
-      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.match ? h.wave : 0]);
-```
-
-Jeder Eintrag in `hourly` enthält `time, wave, period, swell, swell_period, swell_dir, wind,
-gusts, wind_dir, tide, rating, match`.
+Für eigene Karten: Jeder Eintrag im Attribut `hourly` des 7-Tage-Forecast-Sensors enthält `time, wave, period,
+wave_dir, swell, swell_period, swell_dir, wind, gusts, wind_dir, tide, rating, match`. Jeder Tag in
+`daily` enthält u. a. `wave_min`, `wave_max`, `period_max`, `wave_compass`, `wind_min`, `wind_max`,
+`wind_compass`, `max_rating` und `good_hours`.
 
 ## Grenzen
 

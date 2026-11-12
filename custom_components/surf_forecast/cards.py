@@ -19,9 +19,9 @@ def _q(text: str) -> str:
 class CardContext:
     title: str
     wind_direction: str
-    swell_direction: str
+    wave_direction: str
     wind_speed: str
-    swell_height: str
+    wave_height: str
     forecast: str
     next_session: str
     compass_image: str
@@ -47,7 +47,7 @@ indicator_sensors:
         bands:
           - from_value: 1
             color: "#43a047"
-  - sensor: {ctx.swell_direction}
+  - sensor: {ctx.wave_direction}
     indicator:
       image: circle
       color: "#1e88e5"
@@ -57,7 +57,7 @@ indicator_sensors:
       show: false
 value_sensors:
   - sensor: {ctx.wind_speed}
-  - sensor: {ctx.swell_height}
+  - sensor: {ctx.wave_height}
     decimals: 1
 compass:
   circle:
@@ -71,7 +71,7 @@ tap_action:
 """
 
 
-def swell_chart_card(ctx: CardContext) -> str:
+def wave_chart_card(ctx: CardContext) -> str:
     def series(name: str, axis: str, kind: str, color: str, expr: str, extra: str = "") -> str:
         return f"""\
   - entity: {ctx.forecast}
@@ -88,7 +88,7 @@ def swell_chart_card(ctx: CardContext) -> str:
 type: custom:apexcharts-card
 header:
   show: true
-  title: {_q(f"{ctx.title} – Swell 7 Tage")}
+  title: {_q(f"{ctx.title} – Welle & Wind 7 Tage")}
 graph_span: 7d
 span:
   start: hour
@@ -98,16 +98,17 @@ yaxis:
   - id: height
     min: 0
     decimals: 1
-  - id: period
+  - id: wind
     opposite: true
     min: 0
     decimals: 0
 series:
 """
-        + series("Swell (m)", "height", "area", "#1e88e5", "h.swell")
-        + series("Periode (s)", "period", "line", "#fb8c00", "h.swell_period")
+        + series("Welle (m)", "height", "area", "#1e88e5", "h.wave")
+        + series("Wind", "wind", "line", "#757575", "h.wind")
+        + series("Periode (s)", "wind", "line", "#fb8c00", "h.period")
         + series(
-            "Surfbar", "height", "column", "#43a047", "h.match ? h.swell : 0", "    opacity: 0.3\n"
+            "Surfbar", "height", "column", "#43a047", "h.match ? h.wave : 0", "    opacity: 0.3\n"
         )
     )
 
@@ -120,11 +121,11 @@ content: |
   {{% set f = '{ctx.forecast}' -%}}
   {{% set u = state_attr(f, 'wind_unit') -%}}
   {{% set wd = ['Mo','Di','Mi','Do','Fr','Sa','So'] -%}}
-  | Tag | Welle | Periode | Swell | Wind | Rating | 🏄 |
+  | Tag | Welle | Periode | aus | Wind | Rating | 🏄 |
   |:--|:--|:--|:--|:--|:--|:--|
   {{% for d in state_attr(f, 'daily') or [] -%}}
   {{% set dt = as_datetime(d.day) -%}}
-  | {{{{ wd[dt.weekday()] }}}} {{{{ dt.strftime('%d.%m.') }}}} | {{{{ d.wave_min }}}}–{{{{ d.wave_max }}}} m | {{{{ d.period_max }}}} s | {{{{ d.swell_compass }}}} | {{{{ d.wind_min | round(0) }}}}–{{{{ d.wind_max | round(0) }}}} {{{{ u }}}} {{{{ d.wind_compass }}}} | {{{{ '⭐' * (d.max_rating | round(0) | int) }}}} ({{{{ d.max_rating }}}}) | {{{{ d.good_hours ~ ' h' if d.good_hours else '–' }}}} |
+  | {{{{ wd[dt.weekday()] }}}} {{{{ dt.strftime('%d.%m.') }}}} | {{{{ d.wave_min }}}}–{{{{ d.wave_max }}}} m | {{{{ d.period_max }}}} s | {{{{ d.wave_compass }}}} | {{{{ d.wind_min | round(0) }}}}–{{{{ d.wind_max | round(0) }}}} {{{{ u }}}} {{{{ d.wind_compass }}}} | {{{{ '⭐' * (d.max_rating | round(0) | int) }}}} ({{{{ d.max_rating }}}}) | {{{{ d.good_hours ~ ' h' if d.good_hours else '–' }}}} |
   {{% endfor %}}
 
   **Nächste Session:** {{{{ state_attr('{ctx.next_session}', 'text') or 'keine in Sicht 😴' }}}}
@@ -134,7 +135,7 @@ content: |
 def all_cards(ctx: CardContext) -> dict[str, str]:
     return {
         "compass": compass_card(ctx),
-        "swell_chart": swell_chart_card(ctx),
+        "wave_chart": wave_chart_card(ctx),
         "week_table": week_table_card(ctx),
     }
 
@@ -146,8 +147,8 @@ def notification_markdown(ctx: CardContext) -> str:
         "*Karte hinzufügen* → *Manuell* und den jeweiligen Block einfügen.\n\n"
         "**Kompass** (braucht *Compass Card* aus HACS)\n"
         f"```yaml\n{cards['compass']}```\n\n"
-        "**Swell-Verlauf 7 Tage** (braucht *ApexCharts Card* aus HACS)\n"
-        f"```yaml\n{cards['swell_chart']}```\n\n"
+        "**Welle & Wind 7 Tage** (braucht *ApexCharts Card* aus HACS)\n"
+        f"```yaml\n{cards['wave_chart']}```\n\n"
         "**7-Tage-Tabelle** (Standard-Markdown-Karte)\n"
         f"```yaml\n{cards['week_table']}```\n\n"
         "Erneut anzeigen: Button *Dashboard-Karten* am Spot-Gerät."

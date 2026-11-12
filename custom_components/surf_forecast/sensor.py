@@ -59,6 +59,7 @@ HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
         icon="mdi:compass-outline",
         value_fn=lambda h: h.wave_direction,
         compass_fn=lambda h: h.wave_direction,
+        corridor_fn=lambda c: None if c.use_swell else c.swell_corridor,
     ),
     HourSensorDescription(
         key="swell_height",
@@ -84,7 +85,7 @@ HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
         icon="mdi:compass-outline",
         value_fn=lambda h: h.swell_direction,
         compass_fn=lambda h: h.swell_direction,
-        corridor_fn=lambda c: c.swell_corridor,
+        corridor_fn=lambda c: c.swell_corridor if c.use_swell else None,
     ),
     HourSensorDescription(
         key="wind_speed",
@@ -249,6 +250,7 @@ class ForecastSensor(SurfEntity, SensorEntity):
             "daily": [
                 {
                     **d.as_dict(),
+                    "wave_compass": compass(d.wave_direction),
                     "swell_compass": compass(d.swell_direction),
                     "wind_compass": compass(d.wind_direction),
                 }

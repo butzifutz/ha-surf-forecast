@@ -37,9 +37,9 @@ def card_context(hass: HomeAssistant, entry: SurfConfigEntry) -> CardContext:
     return CardContext(
         title=coordinator.spot_name,
         wind_direction=entity_id("sensor", "wind_direction"),
-        swell_direction=entity_id("sensor", "swell_direction"),
+        wave_direction=entity_id("sensor", "wave_direction"),
         wind_speed=entity_id("sensor", "wind_speed"),
-        swell_height=entity_id("sensor", "swell_height"),
+        wave_height=entity_id("sensor", "wave_height"),
         forecast=entity_id("sensor", "forecast"),
         next_session=entity_id("sensor", "next_session"),
         compass_image=compass_url(entry.entry_id),
