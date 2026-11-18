@@ -14,31 +14,30 @@
         "description": "Lege fest, wann es an deinem Spot surfbar ist. Eine Stunde zählt, wenn alle Bedingungen erfüllt sind; mehrere surfbare Stunden am Stück ergeben eine Session.",
         "data": {
           "wind_unit": "Einheit Windgeschwindigkeit",
-          "wave_min": "Wellenhöhe min.",
-          "wave_max": "Wellenhöhe max.",
+          "energy_min": "Mindest-Wellenenergie (surfbar ab)",
+          "energy_top": "Wellenenergie für Top-Rating",
           "period_min": "Periode min.",
-          "use_swell": "Swell statt Gesamtwelle bewerten (Ozean-Spots)",
-          "swell_dir_from": "Wellenrichtung von (−1 = egal)",
-          "swell_dir_to": "Wellenrichtung bis (−1 = egal)",
-          "wind_max": "Wind max.",
           "wind_dir_from": "Wind-Korridor von (−1 = egal)",
           "wind_dir_to": "Wind-Korridor bis (−1 = egal)",
-          "glassy_max": "Nachlauf: bis zu dieser Windstärke zählt nur die Welle",
+          "wind_max": "Wind max.",
+          "wind_strong": "Rating-Abzug ab Windstärke",
+          "glassy_max": "Flaute: bis zu dieser Windstärke ist die Richtung egal",
+          "swell_bonus_min": "Nachlauf-Bonus ab Swell-Höhe",
+          "sea_level_max": "Wasserstand max. (−1 = aus)",
           "min_duration": "Mindestdauer einer Session",
           "daylight_only": "Nur bei Tageslicht",
           "notify_service": "Benachrichtigungsdienst (z. B. notify.mobile_app_mein_handy)",
           "notify_days": "Vorlauf für Benachrichtigungen",
-          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)",
-          "wind_min": "Wind min."
+          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)"
         },
         "data_description": {
-          "wind_dir_from": "Richtung, AUS der der Wind kommen muss, damit er an deinem Spot Welle macht (0 = N, 90 = O, 180 = S, 270 = W). Im Uhrzeigersinn von → bis, z. B. 0 → 90 für Wind aus N bis O.",
-          "wind_min": "So viel Wind braucht es mindestens, damit Welle entsteht bzw. stehen bleibt.",
-          "wind_max": "Ab dieser Windstärke ist es zu verblasen.",
-          "glassy_max": "Flaut der Wind nach einem Sturm ab, die Welle steht aber noch, zählt die Stunde trotzdem, egal aus welcher Richtung.",
-          "swell_dir_from": "Richtung, aus der die Wellen kommen müssen (mittlere Wellenrichtung, im Uhrzeigersinn von → bis).",
-          "use_swell": "Für die Ostsee aus lassen: dort kommen die Wellen aus der Windsee.",
-          "period_min": "An der Ostsee meist 4–6 s. 0 = Periode egal.",
+          "energy_min": "Wellenenergie = 0,49 × Wellenhöhe² × Periode. 0,6 kW/m ≈ 0,6 m bei 3,5 s.",
+          "energy_top": "Ab hier gibt es das volle Basis-Rating (4,5). 4,5 kW/m ≈ 1,4 m bei 4,7 s.",
+          "period_min": "Sicherung gegen kurze Kabbelwelle. 0 = egal.",
+          "wind_dir_from": "Richtungen, AUS denen der Wind kommen darf, damit es an deinem Spot geht (aus Erfahrung, z. B. wegen Mole). 0 = N, 90 = O, 180 = S, 270 = W, im Uhrzeigersinn von → bis, z. B. 235 → 45.",
+          "wind_strong": "Darüber zieht das Rating 0,5 ab.",
+          "swell_bonus_min": "Restwelle nach einem Sturm wird im Modell als Swell geführt. Darüber gibt es bis zu +1 (volle +1 bei 0,3 m mehr).",
+          "sea_level_max": "Bei höherem Wasserstand (z. B. Hochwasser bei Ostwind) zieht das Rating 1 ab.",
           "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst."
         }
       }
@@ -46,10 +45,9 @@
     "error": {
       "cannot_connect": "Open-Meteo ist nicht erreichbar.",
       "no_marine_data": "Für diesen Ort gibt es keine Wellendaten. Setz den Pin etwas weiter aufs Meer hinaus.",
-      "wave_range": "Die maximale Wellenhöhe muss größer als die minimale sein.",
       "corridor_incomplete": "Gib beide Grenzen des Korridors an oder setze beide auf −1.",
       "notify_service": "Der Dienst muss mit notify. beginnen.",
-      "wind_range": "Wind max. muss größer als Wind min. sein."
+      "energy_range": "Die Wellenenergie für das Top-Rating muss größer als die Mindest-Wellenenergie sein."
     },
     "abort": {
       "already_configured": "Dieser Spot ist bereits eingerichtet."
@@ -62,31 +60,30 @@
         "description": "Lege fest, wann es an deinem Spot surfbar ist. Eine Stunde zählt, wenn alle Bedingungen erfüllt sind; mehrere surfbare Stunden am Stück ergeben eine Session.",
         "data": {
           "wind_unit": "Einheit Windgeschwindigkeit",
-          "wave_min": "Wellenhöhe min.",
-          "wave_max": "Wellenhöhe max.",
+          "energy_min": "Mindest-Wellenenergie (surfbar ab)",
+          "energy_top": "Wellenenergie für Top-Rating",
           "period_min": "Periode min.",
-          "use_swell": "Swell statt Gesamtwelle bewerten (Ozean-Spots)",
-          "swell_dir_from": "Wellenrichtung von (−1 = egal)",
-          "swell_dir_to": "Wellenrichtung bis (−1 = egal)",
-          "wind_max": "Wind max.",
           "wind_dir_from": "Wind-Korridor von (−1 = egal)",
           "wind_dir_to": "Wind-Korridor bis (−1 = egal)",
-          "glassy_max": "Nachlauf: bis zu dieser Windstärke zählt nur die Welle",
+          "wind_max": "Wind max.",
+          "wind_strong": "Rating-Abzug ab Windstärke",
+          "glassy_max": "Flaute: bis zu dieser Windstärke ist die Richtung egal",
+          "swell_bonus_min": "Nachlauf-Bonus ab Swell-Höhe",
+          "sea_level_max": "Wasserstand max. (−1 = aus)",
           "min_duration": "Mindestdauer einer Session",
           "daylight_only": "Nur bei Tageslicht",
           "notify_service": "Benachrichtigungsdienst (z. B. notify.mobile_app_mein_handy)",
           "notify_days": "Vorlauf für Benachrichtigungen",
-          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)",
-          "wind_min": "Wind min."
+          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)"
         },
         "data_description": {
-          "wind_dir_from": "Richtung, AUS der der Wind kommen muss, damit er an deinem Spot Welle macht (0 = N, 90 = O, 180 = S, 270 = W). Im Uhrzeigersinn von → bis, z. B. 0 → 90 für Wind aus N bis O.",
-          "wind_min": "So viel Wind braucht es mindestens, damit Welle entsteht bzw. stehen bleibt.",
-          "wind_max": "Ab dieser Windstärke ist es zu verblasen.",
-          "glassy_max": "Flaut der Wind nach einem Sturm ab, die Welle steht aber noch, zählt die Stunde trotzdem, egal aus welcher Richtung.",
-          "swell_dir_from": "Richtung, aus der die Wellen kommen müssen (mittlere Wellenrichtung, im Uhrzeigersinn von → bis).",
-          "use_swell": "Für die Ostsee aus lassen: dort kommen die Wellen aus der Windsee.",
-          "period_min": "An der Ostsee meist 4–6 s. 0 = Periode egal.",
+          "energy_min": "Wellenenergie = 0,49 × Wellenhöhe² × Periode. 0,6 kW/m ≈ 0,6 m bei 3,5 s.",
+          "energy_top": "Ab hier gibt es das volle Basis-Rating (4,5). 4,5 kW/m ≈ 1,4 m bei 4,7 s.",
+          "period_min": "Sicherung gegen kurze Kabbelwelle. 0 = egal.",
+          "wind_dir_from": "Richtungen, AUS denen der Wind kommen darf, damit es an deinem Spot geht (aus Erfahrung, z. B. wegen Mole). 0 = N, 90 = O, 180 = S, 270 = W, im Uhrzeigersinn von → bis, z. B. 235 → 45.",
+          "wind_strong": "Darüber zieht das Rating 0,5 ab.",
+          "swell_bonus_min": "Restwelle nach einem Sturm wird im Modell als Swell geführt. Darüber gibt es bis zu +1 (volle +1 bei 0,3 m mehr).",
+          "sea_level_max": "Bei höherem Wasserstand (z. B. Hochwasser bei Ostwind) zieht das Rating 1 ab.",
           "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst."
         }
       }
@@ -94,10 +91,9 @@
     "error": {
       "cannot_connect": "Open-Meteo ist nicht erreichbar.",
       "no_marine_data": "Für diesen Ort gibt es keine Wellendaten. Setz den Pin etwas weiter aufs Meer hinaus.",
-      "wave_range": "Die maximale Wellenhöhe muss größer als die minimale sein.",
       "corridor_incomplete": "Gib beide Grenzen des Korridors an oder setze beide auf −1.",
       "notify_service": "Der Dienst muss mit notify. beginnen.",
-      "wind_range": "Wind max. muss größer als Wind min. sein."
+      "energy_range": "Die Wellenenergie für das Top-Rating muss größer als die Mindest-Wellenenergie sein."
     }
   },
   "selector": {
@@ -152,6 +148,30 @@
       },
       "forecast": {
         "name": "7-Tage-Forecast"
+      },
+      "energy": {
+        "name": "Wellenenergie"
+      },
+      "rating_day_0": {
+        "name": "Bestes Rating heute"
+      },
+      "rating_day_1": {
+        "name": "Bestes Rating morgen"
+      },
+      "rating_day_2": {
+        "name": "Bestes Rating in 2 Tagen"
+      },
+      "rating_day_3": {
+        "name": "Bestes Rating in 3 Tagen"
+      },
+      "rating_day_4": {
+        "name": "Bestes Rating in 4 Tagen"
+      },
+      "rating_day_5": {
+        "name": "Bestes Rating in 5 Tagen"
+      },
+      "rating_day_6": {
+        "name": "Bestes Rating in 6 Tagen"
       }
     },
     "binary_sensor": {

@@ -4,9 +4,10 @@ Eine Custom Integration mit Surf-Vorhersage für die nächsten 7 Tage, stündlic
 meldet sich, wenn **Welle, Windrichtung, Windstärke und Periode** zu dir passen, damit du keine
 Session verpasst.
 
-Gebaut für **windgetriebene Spots wie an der Ostsee**: Dort gibt es kaum Swell, die Welle entsteht
-aus dem Wind. Der Wind muss deshalb aus der richtigen Richtung und mit genug Stärke kommen. Für
-Ozean-Spots lässt sich auf Swell umschalten.
+Gebaut für **windgetriebene Spots wie an der Ostsee**: Dort entsteht die Welle aus dem Wind. Bewertet
+wird die Energie der Gesamtwelle (Windsee + Swell). Die Windrichtung prüft ein Korridor, den du aus
+Erfahrung setzt, denn örtliche Effekte wie eine Mole kennt kein Modell. Restwelle nach einem
+Sturm, die das Modell als „Swell“ führt, gibt einen Bonus.
 
 **Datenquelle:** [Open-Meteo](https://open-meteo.com/) (kostenlos, kein API-Key, CC BY 4.0)
 
@@ -42,58 +43,76 @@ Mehrere Spots? Die Integration einfach mehrmals hinzufügen.
 Eine Stunde gilt als **surfbar**, wenn **alle** Bedingungen erfüllt sind. Mehrere surfbare Stunden
 am Stück (mindestens *Mindestdauer*) ergeben eine **Session**.
 
-| Option | Bedeutung |
-|---|---|
-| Wellenhöhe min./max. | Korridor für die Wellenhöhe am Spot (Gesamtwelle inkl. Windsee, in m) |
-| Periode min. | Mindestperiode in s. Ostsee: meist 4–6 s. 0 = egal |
-| Wind-Korridor von/bis | Richtung, **aus der** der Wind kommen muss, damit er an deinem Spot Welle macht (−1 = egal) |
-| Wind min./max. | Der Wind muss mindestens so stark sein, dass Welle entsteht, und darf höchstens so stark sein, dass es nicht verblasen ist (Einheit wählbar: kn, km/h, m/s) |
-| Nachlauf bis | Unterhalb dieser Windstärke zählt nur noch die Welle, egal woher der Wind kommt. Das ist die Clean-up-Session, wenn der Wind nach einem Sturm einschläft und die Welle noch steht |
-| Wellenrichtung von/bis | Optional: Richtung, aus der die Wellen kommen müssen (−1 = egal) |
-| Swell statt Gesamtwelle | Für Ozean-Spots: Swell-Höhe, -Periode und -Richtung bewerten. Für die Ostsee aus lassen |
-| Mindestdauer | So viele Stunden am Stück müssen passen |
-| Nur bei Tageslicht | Nachtstunden ignorieren |
-| Benachrichtigungsdienst | z. B. `notify.mobile_app_mein_handy` (optional) |
-| Vorlauf | Sessions so viele Tage im Voraus melden |
-| Mindest-Rating | Nur Sessions mit mindestens diesem Rating melden |
+| Option | Standard | Bedeutung |
+|---|---|---|
+| Mindest-Wellenenergie | 0,6 kW/m | Ab hier surfbar. Wellenenergie = 0,49 × Wellenhöhe² × Periode, 0,6 kW/m ≈ 0,6 m bei 3,5 s |
+| Wellenenergie für Top-Rating | 4,5 kW/m | Ab hier volles Basis-Rating (≈ 1,4 m bei 4,7 s) |
+| Periode min. | 3 s | Sicherung gegen kurze Kabbelwelle |
+| Wind-Korridor von/bis | aus | Richtungen, **aus denen** der Wind kommen darf, damit es an deinem Spot geht (aus Erfahrung) |
+| Wind max. | 55 km/h | Darüber nicht surfbar |
+| Rating-Abzug ab Windstärke | 45 km/h | Darüber −0,5 |
+| Flaute | 8 km/h | Bis zu dieser Windstärke ist die Richtung egal |
+| Nachlauf-Bonus ab Swell-Höhe | 0,2 m | Restwelle nach einem Sturm, siehe Rating |
+| Wasserstand max. | aus (−1) | Darüber −1, z. B. bei Hochwasser durch Ostwind |
+| Mindestdauer | 2 h | So viele Stunden am Stück müssen passen |
+| Nur bei Tageslicht | an | Nachtstunden ignorieren |
+| Benachrichtigungsdienst | – | z. B. `notify.mobile_app_mein_handy` (optional) |
+| Vorlauf | 3 Tage | Sessions so viele Tage im Voraus melden |
+| Mindest-Rating | 0 | Nur Sessions mit mindestens diesem Rating melden |
 
-**Korridore** laufen im Uhrzeigersinn von → bis und dürfen über Norden gehen (z. B. 300 → 60).
-Richtungen sind meteorologisch: 0° = aus Nord, 90° = aus Ost, 180° = aus Süd, 270° = aus West.
+Die Wind-Standardwerte sind in km/h angegeben und werden in deine Einheit umgerechnet. Wechselst du
+später die Einheit, rechnet die Integration bereits gesetzte Werte **nicht** um.
 
-> Beispiel **Ostsee**: Ein Strand, der nach Nordosten aufs offene Wasser schaut, bekommt Welle bei
-> Wind aus N bis O. Wind-Korridor **0 → 90**, Wind min. **12 kn**, max. **30 kn**, Nachlauf bis
-> **6 kn**. Ablandiger Wind aus SW zählt dann nicht, egal wie stark er ist.
+**Korridore** laufen im Uhrzeigersinn von → bis und dürfen über Norden gehen. Richtungen sind
+meteorologisch: 0° = aus Nord, 90° = aus Ost, 180° = aus Süd, 270° = aus West.
 
-Die **Wellenrichtung** im Modell ist an der Ostsee oft unzuverlässig, weil das Modellraster in
-Küstennähe grob ist. Lass den Korridor dafür am besten auf −1 und verlass dich auf die
-Windrichtung. Prüf am Spot, ob die Werte passen.
-
-Wenn du die Windeinheit änderst, werden die Schwellwerte **nicht** umgerechnet. Pass sie einfach
-im selben Dialog mit an.
+> Beispiel **Hohe Düne (Warnemünde)**: Wind-Korridor **235 → 45** (WSW über W und N bis NO).
+> Bei SW und südlicheren Winden geht es dort nicht.
 
 ### Rating (0–5)
 
-- **0:** Die Stunde ist nicht surfbar.
-- **1–5:** Die Stunde ist surfbar. Wie gut, hängt vor allem von der Wellenhöhe ab: Je weiter
-  oben in deinem Korridor, desto besser (60 %). Dazu kommen die Periode (25 %; 3 s zählt nichts,
-  ab 8 s voll) und ein Abzug für sehr starken Wind (15 %).
+**0** heißt: nicht surfbar. Für surfbare Stunden gilt:
 
-Der Sensor *Surf-Rating* zeigt das Rating der aktuellen Stunde. Sessions und Tageswerte
-verwenden das beste Rating im jeweiligen Zeitraum.
+```
+Rating = Basis + Nachlauf-Bonus − Abzüge          (begrenzt auf 1–5)
+
+Basis     1 … 4,5   logarithmisch nach Wellenenergie zwischen Mindest- und Top-Energie.
+                    Kleine Tage zählen noch, große laufen oben aus.
+Nachlauf  0 … +1    Swell über der Schwelle (0,2 m); volle +1 bei 0,3 m mehr.
+                    Nach einem Sturm führt das Modell die abklingende, sortierte
+                    Restwelle als Swell. Sie steckt schon in der Gesamtwelle und
+                    zählt hier bewusst ein zweites Mal.
+Wind      −0,5      über der Abzugs-Windstärke
+Wasser    −1        über dem maximalen Wasserstand (falls gesetzt)
+```
+
+Kalibriert ist das an Hohe Düne vom 12.–14.11.2026 (Werte in km/h):
+
+| | Welle | Swell | Wind | Rating | vor Ort |
+|---|---|---|---|---|---|
+| Do 14:30 | 0,78 m @ 3,5 s | 0,10 m | 20 aus SW | 0 (Korridor) | „hatte noch keinen Sinn“ |
+| Fr 08:30 | 1,32 m @ 4,5 s | 0,10 m | 36 aus W | 4,2 | Longboard möglich |
+| Fr 15:30 | 1,52 m @ 4,8 s | 0,08 m | 40 aus WNW | 4,5 | sehr gut |
+| Sa 08:30 | 0,80 m @ 3,8 s | 0,38 m | 22 aus WSW | 2,8 | klein, aber sauber (vermutet) |
+
+Der Sensor *Surf-Rating* zeigt das Rating der aktuellen Stunde. Sessions und Tageswerte verwenden
+das beste Rating im jeweiligen Zeitraum.
 
 ## Entitäten (pro Spot)
 
 | Entität | Inhalt |
 |---|---|
 | `sensor.<spot>_wave_height` / `_period` / `_direction` | Aktuelle Stunde (Gesamtwelle) |
-| `sensor.<spot>_swell_height` / `_period` / `_direction` | Aktueller Swell (für die Bewertung nur mit „Swell statt Gesamtwelle“) |
+| `sensor.<spot>_swell_height` / `_period` / `_direction` | Aktueller Swell (Restwelle, für den Nachlauf-Bonus) |
+| `sensor.<spot>_energy` | Wellenenergie der aktuellen Stunde in kW/m |
 | `sensor.<spot>_wind_speed` / `_gusts` / `_direction` | Wind (Richtungen haben Attribut `compass`, z. B. „WNW“) |
-| | Wind- und Wellenrichtung haben zusätzlich `in_corridor` (1/0) und `compass_image` (siehe Kompass) |
+| | Die Windrichtung hat zusätzlich `in_corridor` (1/0) und `compass_image` (siehe Kompass) |
 | `sensor.<spot>_water_temperature` | Wassertemperatur |
 | `sensor.<spot>_tide` | Wasserstand inkl. Gezeiten (nicht überall verfügbar) |
 | `sensor.<spot>_surf_rating` | Rating der aktuellen Stunde (0 = nicht surfbar, 1–5) |
 | `sensor.<spot>_next_session` | Startzeit der nächsten Session in den kommenden 7 Tagen. Attribute: `sessions` (alle), `text`, `end`, … |
 | `sensor.<spot>_7_day_forecast` | State: bestes Rating heute. Attribute: `daily` (7 Tage) und `hourly` (168 h) |
+| `sensor.<spot>_rating_day_0` … `_rating_day_6` | Bestes Rating heute, morgen, in 2 … 6 Tagen. Werden in der Datenbank gespeichert; im Verlauf siehst du, wie gut die Vorhersage 1–6 Tage vorher lag |
 | `binary_sensor.<spot>_surfable_now` | An, wenn die aktuelle Stunde passt |
 | `button.<spot>_dashboard_cards` | Zeigt fertiges Dashboard-YAML für diesen Spot als Benachrichtigung |
 
@@ -176,8 +195,7 @@ Später kannst du das YAML jederzeit erneut erzeugen:
 Das erzeugte YAML enthält drei Karten:
 
 - **Kompass** (braucht die [Compass Card](https://github.com/tomvanswam/compass-card) aus HACS):
-  Der grüne Keil ist dein Wind-Korridor, der blaue Ring dein Wellenrichtungs-Korridor (falls
-  gesetzt). Der Pfeil zeigt, woher der Wind gerade kommt, und ist grün, wenn er im Korridor
+  Der grüne Keil ist dein Wind-Korridor. Der Pfeil zeigt, woher der Wind gerade kommt, und ist grün, wenn er im Korridor
   liegt, sonst rot. Der blaue Punkt zeigt die Wellenrichtung. Darunter stehen Windgeschwindigkeit
   und Wellenhöhe. Ein Tipp öffnet den Spot auf Windy.
 - **Welle & Wind 7 Tage** (braucht die [ApexCharts Card](https://github.com/RomRider/apexcharts-card)

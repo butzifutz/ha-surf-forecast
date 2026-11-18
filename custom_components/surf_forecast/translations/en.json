@@ -14,31 +14,30 @@
         "description": "Define when your spot is surfable. An hour counts when all conditions hold; consecutive hours form a session.",
         "data": {
           "wind_unit": "Wind speed unit",
-          "wave_min": "Minimum wave height",
-          "wave_max": "Maximum wave height",
+          "energy_min": "Minimum wave energy (surfable from)",
+          "energy_top": "Wave energy for top rating",
           "period_min": "Minimum wave period",
-          "use_swell": "Rate swell instead of total waves (ocean spots)",
-          "swell_dir_from": "Wave direction from (-1 = any)",
-          "swell_dir_to": "Wave direction to (-1 = any)",
-          "wind_max": "Maximum wind speed",
           "wind_dir_from": "Wind corridor from (-1 = any)",
           "wind_dir_to": "Wind corridor to (-1 = any)",
-          "glassy_max": "Clean-up: below this wind speed only the waves count",
+          "wind_max": "Maximum wind speed",
+          "wind_strong": "Rating penalty above wind speed",
+          "glassy_max": "Calm: below this wind speed the direction does not matter",
+          "swell_bonus_min": "Leftover bonus from swell height",
+          "sea_level_max": "Maximum sea level (-1 = off)",
           "min_duration": "Minimum session length",
           "daylight_only": "Daylight only",
           "notify_service": "Notify service (e.g. notify.mobile_app_my_phone)",
           "notify_days": "Notification horizon",
-          "notify_min_rating": "Minimum rating for notifications (0-5)",
-          "wind_min": "Minimum wind speed"
+          "notify_min_rating": "Minimum rating for notifications (0-5)"
         },
         "data_description": {
-          "wind_dir_from": "Direction the wind has to come FROM to build waves at your spot (0 = N, 90 = E). Clockwise from → to, e.g. 0 → 90 for wind from N to E.",
-          "wind_min": "Wind needed to build or keep the waves.",
-          "wind_max": "Above this it is blown out.",
-          "glassy_max": "When the wind drops after a blow and the waves are still there, the hour counts regardless of direction.",
-          "swell_dir_from": "Direction the waves have to come from (mean wave direction, clockwise from → to).",
-          "use_swell": "Keep off for wind-driven seas like the Baltic.",
-          "period_min": "Baltic: usually 4-6 s. 0 = ignore period.",
+          "energy_min": "Wave energy = 0.49 × height² × period. 0.6 kW/m ≈ 0.6 m at 3.5 s.",
+          "energy_top": "Full base rating (4.5) from here. 4.5 kW/m ≈ 1.4 m at 4.7 s.",
+          "period_min": "Guard against short chop. 0 = ignore.",
+          "wind_dir_from": "Directions the wind may come FROM for your spot to work (from experience). 0 = N, 90 = E, clockwise from → to, e.g. 235 → 45.",
+          "wind_strong": "Above this the rating drops by 0.5.",
+          "swell_bonus_min": "Leftover sea after a blow shows up as swell. Above this up to +1 (full +1 at 0.3 m more).",
+          "sea_level_max": "Above this sea level (e.g. high water) the rating drops by 1.",
           "notify_service": "Leave empty if you only use the surf_forecast_session event / blueprint."
         }
       }
@@ -46,10 +45,9 @@
     "error": {
       "cannot_connect": "Cannot reach Open-Meteo.",
       "no_marine_data": "No wave data for this location. Move the pin a bit further out to sea.",
-      "wave_range": "Maximum wave height must be greater than the minimum.",
       "corridor_incomplete": "Set both corridor bounds or both to -1.",
       "notify_service": "The service must start with notify.",
-      "wind_range": "Maximum wind must be greater than minimum wind."
+      "energy_range": "Top-rating energy must be greater than the minimum energy."
     },
     "abort": {
       "already_configured": "This spot is already configured."
@@ -62,31 +60,30 @@
         "description": "Define when your spot is surfable. An hour counts when all conditions hold; consecutive hours form a session.",
         "data": {
           "wind_unit": "Wind speed unit",
-          "wave_min": "Minimum wave height",
-          "wave_max": "Maximum wave height",
+          "energy_min": "Minimum wave energy (surfable from)",
+          "energy_top": "Wave energy for top rating",
           "period_min": "Minimum wave period",
-          "use_swell": "Rate swell instead of total waves (ocean spots)",
-          "swell_dir_from": "Wave direction from (-1 = any)",
-          "swell_dir_to": "Wave direction to (-1 = any)",
-          "wind_max": "Maximum wind speed",
           "wind_dir_from": "Wind corridor from (-1 = any)",
           "wind_dir_to": "Wind corridor to (-1 = any)",
-          "glassy_max": "Clean-up: below this wind speed only the waves count",
+          "wind_max": "Maximum wind speed",
+          "wind_strong": "Rating penalty above wind speed",
+          "glassy_max": "Calm: below this wind speed the direction does not matter",
+          "swell_bonus_min": "Leftover bonus from swell height",
+          "sea_level_max": "Maximum sea level (-1 = off)",
           "min_duration": "Minimum session length",
           "daylight_only": "Daylight only",
           "notify_service": "Notify service (e.g. notify.mobile_app_my_phone)",
           "notify_days": "Notification horizon",
-          "notify_min_rating": "Minimum rating for notifications (0-5)",
-          "wind_min": "Minimum wind speed"
+          "notify_min_rating": "Minimum rating for notifications (0-5)"
         },
         "data_description": {
-          "wind_dir_from": "Direction the wind has to come FROM to build waves at your spot (0 = N, 90 = E). Clockwise from → to, e.g. 0 → 90 for wind from N to E.",
-          "wind_min": "Wind needed to build or keep the waves.",
-          "wind_max": "Above this it is blown out.",
-          "glassy_max": "When the wind drops after a blow and the waves are still there, the hour counts regardless of direction.",
-          "swell_dir_from": "Direction the waves have to come from (mean wave direction, clockwise from → to).",
-          "use_swell": "Keep off for wind-driven seas like the Baltic.",
-          "period_min": "Baltic: usually 4-6 s. 0 = ignore period.",
+          "energy_min": "Wave energy = 0.49 × height² × period. 0.6 kW/m ≈ 0.6 m at 3.5 s.",
+          "energy_top": "Full base rating (4.5) from here. 4.5 kW/m ≈ 1.4 m at 4.7 s.",
+          "period_min": "Guard against short chop. 0 = ignore.",
+          "wind_dir_from": "Directions the wind may come FROM for your spot to work (from experience). 0 = N, 90 = E, clockwise from → to, e.g. 235 → 45.",
+          "wind_strong": "Above this the rating drops by 0.5.",
+          "swell_bonus_min": "Leftover sea after a blow shows up as swell. Above this up to +1 (full +1 at 0.3 m more).",
+          "sea_level_max": "Above this sea level (e.g. high water) the rating drops by 1.",
           "notify_service": "Leave empty if you only use the surf_forecast_session event / blueprint."
         }
       }
@@ -94,10 +91,9 @@
     "error": {
       "cannot_connect": "Cannot reach Open-Meteo.",
       "no_marine_data": "No wave data for this location. Move the pin a bit further out to sea.",
-      "wave_range": "Maximum wave height must be greater than the minimum.",
       "corridor_incomplete": "Set both corridor bounds or both to -1.",
       "notify_service": "The service must start with notify.",
-      "wind_range": "Maximum wind must be greater than minimum wind."
+      "energy_range": "Top-rating energy must be greater than the minimum energy."
     }
   },
   "selector": {
@@ -152,6 +148,30 @@
       },
       "forecast": {
         "name": "7-day forecast"
+      },
+      "energy": {
+        "name": "Wave energy"
+      },
+      "rating_day_0": {
+        "name": "Best rating today"
+      },
+      "rating_day_1": {
+        "name": "Best rating tomorrow"
+      },
+      "rating_day_2": {
+        "name": "Best rating in 2 days"
+      },
+      "rating_day_3": {
+        "name": "Best rating in 3 days"
+      },
+      "rating_day_4": {
+        "name": "Best rating in 4 days"
+      },
+      "rating_day_5": {
+        "name": "Best rating in 5 days"
+      },
+      "rating_day_6": {
+        "name": "Best rating in 6 days"
       }
     },
     "binary_sensor": {

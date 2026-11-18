@@ -16,29 +16,28 @@ from homeassistant.util import dt as dt_util
 
 from .api import OpenMeteoClient, OpenMeteoError
 from .const import (
+    CONF_CALM_MAX,
     CONF_DAYLIGHT_ONLY,
-    CONF_GLASSY_MAX,
+    CONF_ENERGY_MIN,
+    CONF_ENERGY_TOP,
     CONF_LOCATION,
     CONF_MIN_DURATION,
     CONF_NOTIFY_DAYS,
     CONF_NOTIFY_MIN_RATING,
     CONF_NOTIFY_SERVICE,
     CONF_PERIOD_MIN,
-    CONF_SWELL_DIR_FROM,
-    CONF_SWELL_DIR_TO,
-    CONF_USE_SWELL,
-    CONF_WAVE_MAX,
-    CONF_WAVE_MIN,
+    CONF_SEA_LEVEL_MAX,
+    CONF_SWELL_BONUS_MIN,
     CONF_WIND_DIR_FROM,
     CONF_WIND_DIR_TO,
     CONF_WIND_MAX,
-    CONF_WIND_MIN,
+    CONF_WIND_STRONG,
     CONF_WIND_UNIT,
-    DEFAULT_OPTIONS,
     DOMAIN,
     EVENT_SESSION,
     UPDATE_INTERVAL,
     WIND_UNITS,
+    effective_options,
 )
 from .surf import Session, SurfCriteria, SurfData, compass, evaluate, parse_responses
 
@@ -65,17 +64,18 @@ def windy_url(latitude: float, longitude: float) -> str:
 
 
 def criteria_from_options(options: dict[str, Any]) -> SurfCriteria:
-    opts = {**DEFAULT_OPTIONS, **options}
+    opts = effective_options(options)
+    sea_level_max = float(opts[CONF_SEA_LEVEL_MAX])
     return SurfCriteria(
-        wave_min=float(opts[CONF_WAVE_MIN]),
-        wave_max=float(opts[CONF_WAVE_MAX]),
+        energy_min=float(opts[CONF_ENERGY_MIN]),
+        energy_top=float(opts[CONF_ENERGY_TOP]),
         period_min=float(opts[CONF_PERIOD_MIN]),
-        wind_min=float(opts[CONF_WIND_MIN]),
         wind_max=float(opts[CONF_WIND_MAX]),
-        glassy_max=float(opts[CONF_GLASSY_MAX]),
+        wind_strong=float(opts[CONF_WIND_STRONG]),
+        calm_max=float(opts[CONF_CALM_MAX]),
         wind_corridor=_corridor(opts, CONF_WIND_DIR_FROM, CONF_WIND_DIR_TO),
-        swell_corridor=_corridor(opts, CONF_SWELL_DIR_FROM, CONF_SWELL_DIR_TO),
-        use_swell=bool(opts[CONF_USE_SWELL]),
+        swell_bonus_min=float(opts[CONF_SWELL_BONUS_MIN]),
+        sea_level_max=None if sea_level_max < 0 else sea_level_max,
         daylight_only=bool(opts[CONF_DAYLIGHT_ONLY]),
         min_duration=int(opts[CONF_MIN_DURATION]),
     )
@@ -92,7 +92,7 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
             name=f"{DOMAIN} {entry.title}",
             update_interval=UPDATE_INTERVAL,
         )
-        self.options: dict[str, Any] = {**DEFAULT_OPTIONS, **entry.options}
+        self.options: dict[str, Any] = effective_options(dict(entry.options))
         self.criteria = criteria_from_options(self.options)
         self.wind_unit = WIND_UNITS[self.options[CONF_WIND_UNIT]]
         location = entry.data[CONF_LOCATION]

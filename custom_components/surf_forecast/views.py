@@ -40,7 +40,7 @@ class CompassImageView(HomeAssistantView):
                 slugify(entry.title),
             ):
                 criteria = entry.runtime_data.criteria
-                svg = compass_svg(criteria.wind_corridor, criteria.swell_corridor)
+                svg = compass_svg(criteria.wind_corridor, None)
                 return web.Response(
                     text=svg,
                     content_type="image/svg+xml",

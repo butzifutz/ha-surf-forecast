@@ -14,27 +14,26 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import NoMarineData, OpenMeteoClient, OpenMeteoError
 from .const import (
+    CONF_CALM_MAX,
     CONF_DAYLIGHT_ONLY,
-    CONF_GLASSY_MAX,
+    CONF_ENERGY_MIN,
+    CONF_ENERGY_TOP,
     CONF_LOCATION,
     CONF_MIN_DURATION,
     CONF_NOTIFY_DAYS,
     CONF_NOTIFY_MIN_RATING,
     CONF_NOTIFY_SERVICE,
     CONF_PERIOD_MIN,
-    CONF_SWELL_DIR_FROM,
-    CONF_SWELL_DIR_TO,
-    CONF_USE_SWELL,
-    CONF_WAVE_MAX,
-    CONF_WAVE_MIN,
+    CONF_SEA_LEVEL_MAX,
+    CONF_SWELL_BONUS_MIN,
     CONF_WIND_DIR_FROM,
     CONF_WIND_DIR_TO,
     CONF_WIND_MAX,
-    CONF_WIND_MIN,
+    CONF_WIND_STRONG,
     CONF_WIND_UNIT,
-    DEFAULT_OPTIONS,
     DOMAIN,
     WIND_UNITS,
+    effective_options,
 )
 
 
@@ -52,7 +51,7 @@ _DIRECTION = _number(-1, 359, 1, "°")
 
 
 def options_schema(options: dict[str, Any]) -> vol.Schema:
-    o = {**DEFAULT_OPTIONS, **options}
+    o = effective_options(options)
     unit = WIND_UNITS[o[CONF_WIND_UNIT]]
     return vol.Schema(
         {
@@ -63,17 +62,24 @@ def options_schema(options: dict[str, Any]) -> vol.Schema:
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             ),
-            vol.Required(CONF_WAVE_MIN, default=o[CONF_WAVE_MIN]): _number(0, 15, 0.1, "m"),
-            vol.Required(CONF_WAVE_MAX, default=o[CONF_WAVE_MAX]): _number(0, 15, 0.1, "m"),
+            vol.Required(CONF_ENERGY_MIN, default=o[CONF_ENERGY_MIN]): _number(
+                0.05, 20, 0.05, "kW/m"
+            ),
+            vol.Required(CONF_ENERGY_TOP, default=o[CONF_ENERGY_TOP]): _number(
+                0.1, 50, 0.1, "kW/m"
+            ),
             vol.Required(CONF_PERIOD_MIN, default=o[CONF_PERIOD_MIN]): _number(0, 25, 0.5, "s"),
             vol.Required(CONF_WIND_DIR_FROM, default=o[CONF_WIND_DIR_FROM]): _DIRECTION,
             vol.Required(CONF_WIND_DIR_TO, default=o[CONF_WIND_DIR_TO]): _DIRECTION,
-            vol.Required(CONF_WIND_MIN, default=o[CONF_WIND_MIN]): _number(0, 100, 1, unit),
-            vol.Required(CONF_WIND_MAX, default=o[CONF_WIND_MAX]): _number(0, 100, 1, unit),
-            vol.Required(CONF_GLASSY_MAX, default=o[CONF_GLASSY_MAX]): _number(0, 50, 1, unit),
-            vol.Required(CONF_SWELL_DIR_FROM, default=o[CONF_SWELL_DIR_FROM]): _DIRECTION,
-            vol.Required(CONF_SWELL_DIR_TO, default=o[CONF_SWELL_DIR_TO]): _DIRECTION,
-            vol.Required(CONF_USE_SWELL, default=o[CONF_USE_SWELL]): selector.BooleanSelector(),
+            vol.Required(CONF_WIND_MAX, default=o[CONF_WIND_MAX]): _number(0, 200, 1, unit),
+            vol.Required(CONF_WIND_STRONG, default=o[CONF_WIND_STRONG]): _number(0, 200, 1, unit),
+            vol.Required(CONF_CALM_MAX, default=o[CONF_CALM_MAX]): _number(0, 100, 1, unit),
+            vol.Required(CONF_SWELL_BONUS_MIN, default=o[CONF_SWELL_BONUS_MIN]): _number(
+                0, 5, 0.05, "m"
+            ),
+            vol.Required(CONF_SEA_LEVEL_MAX, default=o[CONF_SEA_LEVEL_MAX]): _number(
+                -1, 5, 0.05, "m"
+            ),
             vol.Required(CONF_MIN_DURATION, default=o[CONF_MIN_DURATION]): _number(1, 12, 1, "h"),
             vol.Required(
                 CONF_DAYLIGHT_ONLY, default=o[CONF_DAYLIGHT_ONLY]
@@ -92,16 +98,10 @@ def options_schema(options: dict[str, Any]) -> vol.Schema:
 
 def validate_options(user_input: dict[str, Any]) -> dict[str, str]:
     errors: dict[str, str] = {}
-    if user_input[CONF_WAVE_MIN] > user_input[CONF_WAVE_MAX]:
-        errors[CONF_WAVE_MAX] = "wave_range"
-    if user_input[CONF_WIND_MIN] > user_input[CONF_WIND_MAX]:
-        errors[CONF_WIND_MAX] = "wind_range"
-    for key_from, key_to in (
-        (CONF_WIND_DIR_FROM, CONF_WIND_DIR_TO),
-        (CONF_SWELL_DIR_FROM, CONF_SWELL_DIR_TO),
-    ):
-        if (user_input[key_from] < 0) != (user_input[key_to] < 0):
-            errors[key_to] = "corridor_incomplete"
+    if user_input[CONF_ENERGY_MIN] >= user_input[CONF_ENERGY_TOP]:
+        errors[CONF_ENERGY_TOP] = "energy_range"
+    if (user_input[CONF_WIND_DIR_FROM] < 0) != (user_input[CONF_WIND_DIR_TO] < 0):
+        errors[CONF_WIND_DIR_TO] = "corridor_incomplete"
     service = (user_input.get(CONF_NOTIFY_SERVICE) or "").strip()
     if service and not service.startswith("notify."):
         errors[CONF_NOTIFY_SERVICE] = "notify_service"
@@ -111,14 +111,14 @@ def validate_options(user_input: dict[str, Any]) -> dict[str, str]:
 def _clean(user_input: dict[str, Any]) -> dict[str, Any]:
     data = dict(user_input)
     data[CONF_NOTIFY_SERVICE] = (data.get(CONF_NOTIFY_SERVICE) or "").strip()
-    for key in (CONF_MIN_DURATION, CONF_NOTIFY_DAYS, CONF_WIND_DIR_FROM, CONF_WIND_DIR_TO,
-                CONF_SWELL_DIR_FROM, CONF_SWELL_DIR_TO):  # fmt: skip
+    for key in (CONF_MIN_DURATION, CONF_NOTIFY_DAYS, CONF_WIND_DIR_FROM, CONF_WIND_DIR_TO):
         data[key] = int(data[key])
     return data
 
 
 class SurfForecastConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {}

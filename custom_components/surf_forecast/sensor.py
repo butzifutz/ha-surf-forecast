@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .const import FORECAST_DAYS
 from .coordinator import SurfConfigEntry, SurfCoordinator
 from .entity import SurfEntity
 from .surf import HourPoint, SurfCriteria, compass, hour_as_attr, in_corridor
@@ -59,7 +60,6 @@ HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
         icon="mdi:compass-outline",
         value_fn=lambda h: h.wave_direction,
         compass_fn=lambda h: h.wave_direction,
-        corridor_fn=lambda c: None if c.use_swell else c.swell_corridor,
     ),
     HourSensorDescription(
         key="swell_height",
@@ -85,7 +85,6 @@ HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
         icon="mdi:compass-outline",
         value_fn=lambda h: h.swell_direction,
         compass_fn=lambda h: h.swell_direction,
-        corridor_fn=lambda c: c.swell_corridor if c.use_swell else None,
     ),
     HourSensorDescription(
         key="wind_speed",
@@ -128,6 +127,14 @@ HOUR_SENSORS: tuple[HourSensorDescription, ...] = (
         value_fn=lambda h: h.sea_level,
     ),
     HourSensorDescription(
+        key="energy",
+        native_unit_of_measurement="kW/m",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        icon="mdi:lightning-bolt-outline",
+        value_fn=lambda h: h.energy,
+    ),
+    HourSensorDescription(
         key="rating",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:surfing",
@@ -144,6 +151,7 @@ async def async_setup_entry(
         CurrentHourSensor(coordinator, desc) for desc in HOUR_SENSORS
     ]
     entities += [NextSessionSensor(coordinator), ForecastSensor(coordinator)]
+    entities += [DayRatingSensor(coordinator, offset) for offset in range(FORECAST_DAYS)]
     async_add_entities(entities)
 
 
@@ -257,4 +265,45 @@ class ForecastSensor(SurfEntity, SensorEntity):
                 for d in data.days
             ],
             "hourly": [hour_as_attr(h, data.tz) for h in data.hours],
+        }
+
+
+class DayRatingSensor(SurfEntity, SensorEntity):
+    """Best rating of today (+0) up to +6 days.
+
+    Recorded by HA, so the history shows how the forecast for a day evolved
+    compared with the rating on the day itself.
+    """
+
+    _attr_icon = "mdi:calendar-star-outline"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: SurfCoordinator, offset: int) -> None:
+        super().__init__(coordinator, f"rating_day_{offset}")
+        self._offset = offset
+
+    def _day(self):
+        data = self.coordinator.data
+        wanted = dt_util.utcnow().astimezone(data.tz).date() + timedelta(days=self._offset)
+        return next((d for d in data.days if d.day == wanted), None)
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._day() is not None
+
+    @property
+    def native_value(self) -> float | None:
+        day = self._day()
+        return day.max_rating if day else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        day = self._day()
+        if day is None:
+            return None
+        return {
+            "day": day.day.isoformat(),
+            "good_hours": day.good_hours,
+            "wave_max": day.wave_max,
+            "energy_max": day.energy_max,
         }
