@@ -152,26 +152,23 @@
       "energy": {
         "name": "Wellenenergie"
       },
-      "rating_day_0": {
-        "name": "Bestes Rating heute"
+      "rating_lead_1": {
+        "name": "Rating-Prognose von vor 1 Tag"
       },
-      "rating_day_1": {
-        "name": "Bestes Rating morgen"
+      "rating_lead_2": {
+        "name": "Rating-Prognose von vor 2 Tagen"
       },
-      "rating_day_2": {
-        "name": "Bestes Rating in 2 Tagen"
+      "rating_lead_3": {
+        "name": "Rating-Prognose von vor 3 Tagen"
       },
-      "rating_day_3": {
-        "name": "Bestes Rating in 3 Tagen"
+      "rating_lead_6": {
+        "name": "Rating-Prognose von vor 6 Tagen"
       },
-      "rating_day_4": {
-        "name": "Bestes Rating in 4 Tagen"
+      "next_session_rating": {
+        "name": "Rating nächste Session"
       },
-      "rating_day_5": {
-        "name": "Bestes Rating in 5 Tagen"
-      },
-      "rating_day_6": {
-        "name": "Bestes Rating in 6 Tagen"
+      "best_session": {
+        "name": "Beste Session (7 Tage)"
       }
     },
     "binary_sensor": {

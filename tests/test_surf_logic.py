@@ -192,3 +192,42 @@ def test_compass():
     assert surf.compass(90) == "O"
     assert surf.compass(225) == "SW"
     assert surf.compass(None) is None
+
+
+def test_forecast_archive_records_lead_times_and_returns_them_later():
+    marine, weather = _responses(24 * 7)
+    hours, tz = surf.parse_responses(marine, weather)
+    criteria = surf.SurfCriteria(daylight_only=False)
+    surf.evaluate(hours, criteria, tz)
+    archive: dict = {}
+    now = hours[0].time + timedelta(minutes=17)
+    surf.record_forecast(archive, hours, now)
+    # leads 1, 2, 3, 6 days -> 4 target hours
+    assert sorted(archive) == sorted(
+        (hours[0].time + timedelta(days=d)).isoformat() for d in surf.LEAD_DAYS
+    )
+    target = hours[0].time + timedelta(days=2)
+    assert archive[target.isoformat()] == {"2": hours[48].rating}
+
+    # a later run must not overwrite what was forecast earlier
+    first = hours[48].rating
+    assert first > 0
+    hours[48].rating = 0.0
+    surf.record_forecast(archive, hours, now)
+    assert archive[target.isoformat()] == {"2": first}
+
+    # two days later the current hour has the 2-day-old forecast
+    later = target + timedelta(minutes=30)
+    assert surf.predicted_rating(archive, later, 2) is not None
+    assert surf.predicted_rating(archive, later, 1) is None
+
+    # old entries are pruned
+    surf.record_forecast(archive, hours, target + timedelta(days=1))
+    assert target.isoformat() not in archive
+
+
+def test_hourly_attributes_are_compact():
+    point = surf.HourPoint(time=datetime(2026, 1, 1, tzinfo=timezone.utc), wave_height=1.0)
+    attrs = surf.hour_as_attr(point, timezone(timedelta(hours=1)))
+    assert attrs["time"] == "2026-01-01T01:00+01:00"
+    assert set(attrs) == {"time", "wave", "period", "swell", "wind", "wind_dir", "energy", "rating", "match"}

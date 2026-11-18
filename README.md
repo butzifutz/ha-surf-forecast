@@ -112,7 +112,9 @@ das beste Rating im jeweiligen Zeitraum.
 | `sensor.<spot>_surf_rating` | Rating der aktuellen Stunde (0 = nicht surfbar, 1–5) |
 | `sensor.<spot>_next_session` | Startzeit der nächsten Session in den kommenden 7 Tagen. Attribute: `sessions` (alle), `text`, `end`, … |
 | `sensor.<spot>_7_day_forecast` | State: bestes Rating heute. Attribute: `daily` (7 Tage) und `hourly` (168 h) |
-| `sensor.<spot>_rating_day_0` … `_rating_day_6` | Bestes Rating heute, morgen, in 2 … 6 Tagen. Werden in der Datenbank gespeichert; im Verlauf siehst du, wie gut die Vorhersage 1–6 Tage vorher lag |
+| `sensor.<spot>_next_session_rating` | Bestes Rating der nächsten Session (0 = keine in Sicht). Attribute: `start`, `end`, `hours`, `text` |
+| `sensor.<spot>_best_session` | Startzeit der Session mit dem höchsten Rating in den nächsten 7 Tagen. Attribute wie oben |
+| `sensor.<spot>_rating_lead_1` / `_2` / `_3` / `_6` | Rating, das 1, 2, 3 bzw. 6 Tage vorher für die aktuelle Stunde vorhergesagt wurde (siehe *Wie gut ist die Vorhersage?*) |
 | `binary_sensor.<spot>_surfable_now` | An, wenn die aktuelle Stunde passt |
 | `button.<spot>_dashboard_cards` | Zeigt fertiges Dashboard-YAML für diesen Spot als Benachrichtigung |
 
@@ -192,7 +194,7 @@ Später kannst du das YAML jederzeit erneut erzeugen:
 - **Aktion** `surf_forecast.dashboard_cards` (optional mit `config_entry_id`). Mit
   Antwortvariable liefert sie das YAML als Daten zurück, statt eine Benachrichtigung zu zeigen.
 
-Das erzeugte YAML enthält drei Karten:
+Das erzeugte YAML enthält fünf Karten:
 
 - **Kompass** (braucht die [Compass Card](https://github.com/tomvanswam/compass-card) aus HACS):
   Der grüne Keil ist dein Wind-Korridor. Der Pfeil zeigt, woher der Wind gerade kommt, und ist grün, wenn er im Korridor
@@ -200,6 +202,8 @@ Das erzeugte YAML enthält drei Karten:
   und Wellenhöhe. Ein Tipp öffnet den Spot auf Windy.
 - **Welle & Wind 7 Tage** (braucht die [ApexCharts Card](https://github.com/RomRider/apexcharts-card)
   aus HACS): Wellenhöhe, Wind und Periode pro Stunde, grüne Balken für die surfbaren Stunden.
+- **Surf-Rating 7 Tage** (ApexCharts Card): das Rating jeder Stunde der nächsten 7 Tage.
+- **Prognose vs. aktuelles Rating** (Standard-Verlaufskarte, ohne HACS): siehe unten.
 - **7-Tage-Tabelle** (Standard-Markdown-Karte, ohne HACS): pro Tag Welle, Periode, Wellenrichtung,
   Wind und Rating sowie die nächste Session.
 
@@ -209,10 +213,22 @@ auch im Attribut `compass_image` des Windrichtungs-Sensors.
 Zeigt die App „Konfigurationsfehler“ bei Custom Cards: in der Companion App unter *Einstellungen →
 Companion App → Fehlerbehebung* den Frontend-Cache zurücksetzen.
 
-Für eigene Karten: Jeder Eintrag im Attribut `hourly` des 7-Tage-Forecast-Sensors enthält `time, wave, period,
-wave_dir, swell, swell_period, swell_dir, wind, gusts, wind_dir, tide, rating, match`. Jeder Tag in
-`daily` enthält u. a. `wave_min`, `wave_max`, `period_max`, `wave_compass`, `wind_min`, `wind_max`,
-`wind_compass`, `max_rating` und `good_hours`.
+Für eigene Karten: Jeder Eintrag im Attribut `hourly` des 7-Tage-Forecast-Sensors enthält `time, wave, period, swell,
+wind, wind_dir, energy, rating, match`. Jeder Tag in `daily` enthält u. a. `wave_min`, `wave_max`,
+`period_max`, `energy_max`, `wave_compass`, `wind_min`, `wind_max`, `wind_compass`, `max_rating` und
+`good_hours`. Die Attribute stehen nur im Arbeitsspeicher, nicht in der Datenbank.
+
+### Wie gut ist die Vorhersage?
+
+Die Stundenwerte sind immer die neueste Vorhersage; die Integration holt jede Stunde den aktuellen
+Modelllauf. Um zu sehen, wie verlässlich frühere Vorhersagen für deinen Spot waren, merkt sie sich
+bei jedem Abruf das Rating, das sie für die Stunden in 1, 2, 3 und 6 Tagen vorhersagt. Ist die
+Stunde erreicht, geben die Sensoren *Rating-Prognose von vor N Tagen* diesen Wert aus.
+
+Damit liegen alle Kurven auf derselben Zeitachse wie das *Surf-Rating* und lassen sich ohne
+Verschieben übereinanderlegen (Karte *Prognose vs. aktuelles Rating*). Weicht die Kurve „vor 3
+Tagen“ stark vom aktuellen Rating ab, war die Vorhersage mit 3 Tagen Vorlauf daneben. Die Sensoren
+füllen sich erst mit der Zeit: „vor 1 Tag“ nach 24 Stunden, „vor 6 Tagen“ nach 6 Tagen.
 
 ## Grenzen
 

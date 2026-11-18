@@ -39,7 +39,15 @@ from .const import (
     WIND_UNITS,
     effective_options,
 )
-from .surf import Session, SurfCriteria, SurfData, compass, evaluate, parse_responses
+from .surf import (
+    Session,
+    SurfCriteria,
+    SurfData,
+    compass,
+    evaluate,
+    parse_responses,
+    record_forecast,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,11 +114,13 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
         )
         self._notified: dict[str, str] = {}
         self.cards_shown = False
+        self.forecast_archive: dict[str, dict[str, float]] = {}
 
     async def _async_setup(self) -> None:
         stored = await self._store.async_load()
         self._notified = (stored or {}).get("sessions", {})
         self.cards_shown = bool((stored or {}).get("cards_shown"))
+        self.forecast_archive = (stored or {}).get("forecasts", {})
 
     async def _async_update_data(self) -> SurfData:
         try:
@@ -122,12 +132,17 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
 
         hours, tz = parse_responses(marine, weather)
         data = evaluate(hours, self.criteria, tz)
-        await self._handle_notifications(data)
+        record_forecast(self.forecast_archive, data.hours, dt_util.utcnow())
+        await self._handle_notifications(data)  # also saves the state
         return data
 
     async def async_save_state(self) -> None:
         await self._store.async_save(
-            {"sessions": self._notified, "cards_shown": self.cards_shown}
+            {
+                "sessions": self._notified,
+                "cards_shown": self.cards_shown,
+                "forecasts": self.forecast_archive,
+            }
         )
 
     # ------------------------------------------------------------------ #

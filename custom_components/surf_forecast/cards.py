@@ -7,7 +7,7 @@ up by the caller (they depend on the system language and on renames).
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def _q(text: str) -> str:
@@ -26,6 +26,9 @@ class CardContext:
     next_session: str
     compass_image: str
     windy_url: str
+    surf_rating: str = ""
+    # lead days -> entity id of the "rating forecast from N days ago" sensor
+    lead_ratings: dict[int, str] = field(default_factory=dict)
 
 
 def compass_card(ctx: CardContext) -> str:
@@ -113,6 +116,49 @@ series:
     )
 
 
+def rating_chart_card(ctx: CardContext) -> str:
+    return f"""\
+type: custom:apexcharts-card
+header:
+  show: true
+  title: {_q(f"{ctx.title} – Surf-Rating 7 Tage")}
+graph_span: 7d
+span:
+  start: hour
+now:
+  show: true
+yaxis:
+  - min: 0
+    max: 5
+    decimals: 1
+series:
+  - entity: {ctx.forecast}
+    name: Rating
+    type: column
+    color: "#43a047"
+    data_generator: |
+      return entity.attributes.hourly.map(h => [new Date(h.time).getTime(), h.rating]);
+"""
+
+
+def forecast_check_card(ctx: CardContext) -> str:
+    leads = "".join(
+        f"""\
+  - entity: {entity_id}
+    name: {_q(f"Prognose von vor {lead} Tag{'' if lead == 1 else 'en'}")}
+"""
+        for lead, entity_id in sorted(ctx.lead_ratings.items())
+    )
+    return f"""\
+type: history-graph
+title: {_q(f"{ctx.title} – Prognose vs. aktuelles Rating")}
+hours_to_show: 168
+entities:
+  - entity: {ctx.surf_rating}
+    name: Rating (aktueller Lauf)
+{leads}"""
+
+
 def week_table_card(ctx: CardContext) -> str:
     return f"""\
 type: markdown
@@ -136,6 +182,8 @@ def all_cards(ctx: CardContext) -> dict[str, str]:
     return {
         "compass": compass_card(ctx),
         "wave_chart": wave_chart_card(ctx),
+        "rating_chart": rating_chart_card(ctx),
+        "forecast_check": forecast_check_card(ctx),
         "week_table": week_table_card(ctx),
     }
 
@@ -149,6 +197,11 @@ def notification_markdown(ctx: CardContext) -> str:
         f"```yaml\n{cards['compass']}```\n\n"
         "**Welle & Wind 7 Tage** (braucht *ApexCharts Card* aus HACS)\n"
         f"```yaml\n{cards['wave_chart']}```\n\n"
+        "**Surf-Rating 7 Tage** (braucht *ApexCharts Card* aus HACS)\n"
+        f"```yaml\n{cards['rating_chart']}```\n\n"
+        "**Prognose vs. aktuelles Rating** (Standard-Verlaufskarte; füllt sich erst "
+        "mit der Zeit, z. B. nach 3 Tagen für die 3-Tage-Prognose)\n"
+        f"```yaml\n{cards['forecast_check']}```\n\n"
         "**7-Tage-Tabelle** (Standard-Markdown-Karte)\n"
         f"```yaml\n{cards['week_table']}```\n\n"
         "Erneut anzeigen: Button *Dashboard-Karten* am Spot-Gerät."

@@ -365,6 +365,44 @@ def evaluate(hours: list[HourPoint], criteria: SurfCriteria, tz: timezone) -> Su
     )
 
 
+# --------------------------------------------------------------------------- #
+# Forecast archive (to compare old forecasts with the actual hour)
+# --------------------------------------------------------------------------- #
+
+LEAD_DAYS = (1, 2, 3, 6)
+
+
+def _hour_key(moment: datetime) -> str:
+    return moment.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
+
+
+def record_forecast(
+    archive: dict[str, dict[str, float]], hours: list[HourPoint], now: datetime
+) -> None:
+    """Remember the rating forecast for the hours exactly 1, 2, 3, 6 days ahead.
+
+    Called on every (hourly) update; old entries are dropped. The archive maps
+    target hour (UTC ISO) -> {lead days: rating}. The first value recorded for a
+    lead is kept.
+    """
+    by_key = {_hour_key(p.time): p for p in hours}
+    current = datetime.fromisoformat(_hour_key(now))
+    for lead in LEAD_DAYS:
+        key = _hour_key(current + timedelta(days=lead))
+        if (point := by_key.get(key)) is not None:
+            archive.setdefault(key, {}).setdefault(str(lead), point.rating)
+    oldest = current - timedelta(hours=2)
+    for key in [k for k in archive if datetime.fromisoformat(k) < oldest]:
+        del archive[key]
+
+
+def predicted_rating(
+    archive: dict[str, dict[str, float]], now: datetime, lead: int
+) -> float | None:
+    """Rating forecast made ``lead`` days ago for the current hour."""
+    return archive.get(_hour_key(now), {}).get(str(lead))
+
+
 COMPASS = ["N", "NNO", "NO", "ONO", "O", "OSO", "SO", "SSO",
            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]  # fmt: skip
 
@@ -378,18 +416,13 @@ def compass(angle: float | None) -> str | None:
 def hour_as_attr(point: HourPoint, tz: timezone) -> dict[str, Any]:
     """Compact representation for state attributes / charts."""
     return {
-        "time": point.time.astimezone(tz).isoformat(),
+        "time": point.time.astimezone(tz).isoformat(timespec="minutes"),
         "wave": point.wave_height,
         "period": point.wave_period,
-        "wave_dir": point.wave_direction,
-        "energy": point.energy,
         "swell": point.swell_height,
-        "swell_period": point.swell_period,
-        "swell_dir": point.swell_direction,
         "wind": point.wind_speed,
-        "gusts": point.wind_gusts,
         "wind_dir": point.wind_direction,
-        "tide": point.sea_level,
+        "energy": point.energy,
         "rating": point.rating,
         "match": point.match,
     }

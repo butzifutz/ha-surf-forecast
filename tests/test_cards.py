@@ -26,6 +26,8 @@ CTX = cards.CardContext(
     next_session="sensor.spot_nachste_session",
     compass_image="/api/surf_forecast/compass/abc.svg",
     windy_url="https://www.windy.com/54.180/7.880?waves,54.180,7.880,10",
+    surf_rating="sensor.spot_surf_rating",
+    lead_ratings={1: "sensor.spot_rating_prognose_1", 3: "sensor.spot_rating_prognose_3"},
 )
 
 
@@ -64,6 +66,26 @@ def test_week_table_card():
 
 def test_notification_contains_all_cards():
     text = cards.notification_markdown(CTX)
-    assert text.count("```yaml") == 3
+    assert text.count("```yaml") == 5
     for body in cards.all_cards(CTX).values():
         assert body in text
+
+
+def test_rating_chart_card():
+    card = yaml.safe_load(cards.rating_chart_card(CTX))
+    assert card["type"] == "custom:apexcharts-card"
+    (series,) = card["series"]
+    assert series["entity"] == CTX.forecast
+    assert "h.rating" in series["data_generator"]
+    assert card["yaxis"][0]["max"] == 5
+
+
+def test_forecast_check_card():
+    card = yaml.safe_load(cards.forecast_check_card(CTX))
+    assert card["type"] == "history-graph"
+    assert [e["entity"] for e in card["entities"]] == [
+        CTX.surf_rating,
+        "sensor.spot_rating_prognose_1",
+        "sensor.spot_rating_prognose_3",
+    ]
+    assert card["entities"][2]["name"] == "Prognose von vor 3 Tagen"
