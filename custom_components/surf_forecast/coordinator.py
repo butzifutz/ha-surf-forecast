@@ -40,6 +40,7 @@ from .const import (
     effective_options,
 )
 from .surf import (
+    ForecastArchive,
     Session,
     SurfCriteria,
     SurfData,
@@ -47,6 +48,7 @@ from .surf import (
     evaluate,
     parse_responses,
     record_forecast,
+    upgrade_archive,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -114,13 +116,13 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
         )
         self._notified: dict[str, str] = {}
         self.cards_shown = False
-        self.forecast_archive: dict[str, dict[str, float]] = {}
+        self.forecast_archive: ForecastArchive = {}
 
     async def _async_setup(self) -> None:
         stored = await self._store.async_load()
         self._notified = (stored or {}).get("sessions", {})
         self.cards_shown = bool((stored or {}).get("cards_shown"))
-        self.forecast_archive = (stored or {}).get("forecasts", {})
+        self.forecast_archive = upgrade_archive((stored or {}).get("forecasts", {}))
 
     async def _async_update_data(self) -> SurfData:
         try:

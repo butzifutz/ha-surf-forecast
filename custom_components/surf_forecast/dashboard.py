@@ -17,7 +17,7 @@ from homeassistant.util import slugify
 from .cards import CardContext, all_cards, notification_markdown
 from .const import DOMAIN
 from .coordinator import SurfConfigEntry
-from .surf import LEAD_DAYS
+from .surf import LEAD_DAYS, TRACKED
 from .views import compass_url
 
 SERVICE_DASHBOARD_CARDS = "dashboard_cards"
@@ -45,7 +45,20 @@ def card_context(hass: HomeAssistant, entry: SurfConfigEntry) -> CardContext:
         next_session=entity_id("sensor", "next_session"),
         compass_image=compass_url(entry.entry_id),
         surf_rating=entity_id("sensor", "rating"),
-        lead_ratings={lead: entity_id("sensor", f"rating_lead_{lead}") for lead in LEAD_DAYS},
+        actual={
+            "rating": entity_id("sensor", "rating"),
+            "wave": entity_id("sensor", "wave_height"),
+            "swell": entity_id("sensor", "swell_height"),
+            "wind": entity_id("sensor", "wind_speed"),
+        },
+        leads={
+            q: {lead: entity_id("sensor", f"{q}_lead_{lead}") for lead in LEAD_DAYS}
+            for q in TRACKED
+        },
+        ahead={
+            q: {lead: entity_id("sensor", f"{q}_ahead_{lead}") for lead in LEAD_DAYS}
+            for q in TRACKED
+        },
         windy_url=coordinator.windy_url,
     )
 

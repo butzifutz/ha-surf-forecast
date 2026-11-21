@@ -369,38 +369,66 @@ def evaluate(hours: list[HourPoint], criteria: SurfCriteria, tz: timezone) -> Su
 # Forecast archive (to compare old forecasts with the actual hour)
 # --------------------------------------------------------------------------- #
 
-LEAD_DAYS = (1, 2, 3, 6)
+LEAD_DAYS = (1, 3, 6)
+
+# quantities tracked ahead and verified afterwards: name -> value of an hour
+TRACKED: dict[str, Any] = {
+    "rating": lambda p: p.rating,
+    "wave": lambda p: p.wave_height,
+    "swell": lambda p: p.swell_height,
+    "wind": lambda p: p.wind_speed,
+}
+
+# target hour (UTC ISO) -> lead days -> quantity -> value
+ForecastArchive = dict[str, dict[str, dict[str, float | None]]]
 
 
 def _hour_key(moment: datetime) -> str:
     return moment.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
 
 
-def record_forecast(
-    archive: dict[str, dict[str, float]], hours: list[HourPoint], now: datetime
-) -> None:
-    """Remember the rating forecast for the hours exactly 1, 2, 3, 6 days ahead.
+def forecast_for(hours: list[HourPoint], moment: datetime) -> HourPoint | None:
+    """The forecast hour containing ``moment``."""
+    key = _hour_key(moment)
+    return next((p for p in hours if _hour_key(p.time) == key), None)
 
-    Called on every (hourly) update; old entries are dropped. The archive maps
-    target hour (UTC ISO) -> {lead days: rating}. The first value recorded for a
-    lead is kept.
+
+def upgrade_archive(archive: dict) -> ForecastArchive:
+    """Accept the 0.5.1 format (lead -> rating) and drop unused leads."""
+    upgraded: ForecastArchive = {}
+    for key, leads in archive.items():
+        for lead, value in leads.items():
+            if int(lead) not in LEAD_DAYS:
+                continue
+            values = value if isinstance(value, dict) else {"rating": value}
+            upgraded.setdefault(key, {})[lead] = values
+    return upgraded
+
+
+def record_forecast(archive: ForecastArchive, hours: list[HourPoint], now: datetime) -> None:
+    """Remember the forecast for the hours exactly 1, 3 and 6 days ahead.
+
+    Called on every (hourly) update; old entries are dropped. The first value
+    recorded for a lead is kept.
     """
     by_key = {_hour_key(p.time): p for p in hours}
     current = datetime.fromisoformat(_hour_key(now))
     for lead in LEAD_DAYS:
         key = _hour_key(current + timedelta(days=lead))
         if (point := by_key.get(key)) is not None:
-            archive.setdefault(key, {}).setdefault(str(lead), point.rating)
+            archive.setdefault(key, {}).setdefault(
+                str(lead), {name: fn(point) for name, fn in TRACKED.items()}
+            )
     oldest = current - timedelta(hours=2)
     for key in [k for k in archive if datetime.fromisoformat(k) < oldest]:
         del archive[key]
 
 
-def predicted_rating(
-    archive: dict[str, dict[str, float]], now: datetime, lead: int
+def predicted(
+    archive: ForecastArchive, now: datetime, lead: int, quantity: str = "rating"
 ) -> float | None:
-    """Rating forecast made ``lead`` days ago for the current hour."""
-    return archive.get(_hour_key(now), {}).get(str(lead))
+    """Forecast made ``lead`` days ago for the current hour."""
+    return archive.get(_hour_key(now), {}).get(str(lead), {}).get(quantity)
 
 
 COMPASS = ["N", "NNO", "NO", "ONO", "O", "OSO", "SO", "SSO",

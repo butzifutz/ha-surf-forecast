@@ -152,23 +152,83 @@
       "energy": {
         "name": "Wellenenergie"
       },
-      "rating_lead_1": {
-        "name": "Rating-Prognose von vor 1 Tag"
-      },
-      "rating_lead_2": {
-        "name": "Rating-Prognose von vor 2 Tagen"
-      },
-      "rating_lead_3": {
-        "name": "Rating-Prognose von vor 3 Tagen"
-      },
-      "rating_lead_6": {
-        "name": "Rating-Prognose von vor 6 Tagen"
-      },
       "next_session_rating": {
         "name": "Rating nächste Session"
       },
       "best_session": {
         "name": "Beste Session (7 Tage)"
+      },
+      "rating_ahead_1": {
+        "name": "Rating in 1 Tag"
+      },
+      "rating_lead_1": {
+        "name": "Rating-Prognose von vor 1 Tag"
+      },
+      "rating_ahead_3": {
+        "name": "Rating in 3 Tagen"
+      },
+      "rating_lead_3": {
+        "name": "Rating-Prognose von vor 3 Tagen"
+      },
+      "rating_ahead_6": {
+        "name": "Rating in 6 Tagen"
+      },
+      "rating_lead_6": {
+        "name": "Rating-Prognose von vor 6 Tagen"
+      },
+      "wave_ahead_1": {
+        "name": "Wellenhöhe in 1 Tag"
+      },
+      "wave_lead_1": {
+        "name": "Wellenhöhe-Prognose von vor 1 Tag"
+      },
+      "wave_ahead_3": {
+        "name": "Wellenhöhe in 3 Tagen"
+      },
+      "wave_lead_3": {
+        "name": "Wellenhöhe-Prognose von vor 3 Tagen"
+      },
+      "wave_ahead_6": {
+        "name": "Wellenhöhe in 6 Tagen"
+      },
+      "wave_lead_6": {
+        "name": "Wellenhöhe-Prognose von vor 6 Tagen"
+      },
+      "swell_ahead_1": {
+        "name": "Swell-Höhe in 1 Tag"
+      },
+      "swell_lead_1": {
+        "name": "Swell-Prognose von vor 1 Tag"
+      },
+      "swell_ahead_3": {
+        "name": "Swell-Höhe in 3 Tagen"
+      },
+      "swell_lead_3": {
+        "name": "Swell-Prognose von vor 3 Tagen"
+      },
+      "swell_ahead_6": {
+        "name": "Swell-Höhe in 6 Tagen"
+      },
+      "swell_lead_6": {
+        "name": "Swell-Prognose von vor 6 Tagen"
+      },
+      "wind_ahead_1": {
+        "name": "Wind in 1 Tag"
+      },
+      "wind_lead_1": {
+        "name": "Wind-Prognose von vor 1 Tag"
+      },
+      "wind_ahead_3": {
+        "name": "Wind in 3 Tagen"
+      },
+      "wind_lead_3": {
+        "name": "Wind-Prognose von vor 3 Tagen"
+      },
+      "wind_ahead_6": {
+        "name": "Wind in 6 Tagen"
+      },
+      "wind_lead_6": {
+        "name": "Wind-Prognose von vor 6 Tagen"
       }
     },
     "binary_sensor": {

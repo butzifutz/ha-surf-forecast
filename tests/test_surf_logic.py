@@ -197,33 +197,50 @@ def test_compass():
 def test_forecast_archive_records_lead_times_and_returns_them_later():
     marine, weather = _responses(24 * 7)
     hours, tz = surf.parse_responses(marine, weather)
-    criteria = surf.SurfCriteria(daylight_only=False)
-    surf.evaluate(hours, criteria, tz)
+    surf.evaluate(hours, surf.SurfCriteria(daylight_only=False), tz)
     archive: dict = {}
     now = hours[0].time + timedelta(minutes=17)
     surf.record_forecast(archive, hours, now)
-    # leads 1, 2, 3, 6 days -> 4 target hours
+    # leads 1, 3, 6 days -> 3 target hours, each with all tracked quantities
     assert sorted(archive) == sorted(
         (hours[0].time + timedelta(days=d)).isoformat() for d in surf.LEAD_DAYS
     )
-    target = hours[0].time + timedelta(days=2)
-    assert archive[target.isoformat()] == {"2": hours[48].rating}
+    target = hours[0].time + timedelta(days=3)
+    point = hours[72]
+    assert archive[target.isoformat()] == {
+        "3": {"rating": point.rating, "wave": 1.2, "swell": 1.0, "wind": 8.0}
+    }
 
     # a later run must not overwrite what was forecast earlier
-    first = hours[48].rating
+    first = point.rating
     assert first > 0
-    hours[48].rating = 0.0
+    point.rating = 0.0
     surf.record_forecast(archive, hours, now)
-    assert archive[target.isoformat()] == {"2": first}
+    assert archive[target.isoformat()]["3"]["rating"] == first
 
-    # two days later the current hour has the 2-day-old forecast
+    # three days later the current hour has the 3-day-old forecast
     later = target + timedelta(minutes=30)
-    assert surf.predicted_rating(archive, later, 2) is not None
-    assert surf.predicted_rating(archive, later, 1) is None
+    assert surf.predicted(archive, later, 3) == first
+    assert surf.predicted(archive, later, 3, "wave") == 1.2
+    assert surf.predicted(archive, later, 1) is None
 
     # old entries are pruned
     surf.record_forecast(archive, hours, target + timedelta(days=1))
     assert target.isoformat() not in archive
+
+
+def test_archive_from_0_5_1_is_upgraded():
+    old = {"2026-11-20T10:00:00+00:00": {"1": 3.5, "2": 2.0, "3": 0.0}}
+    assert surf.upgrade_archive(old) == {
+        "2026-11-20T10:00:00+00:00": {"1": {"rating": 3.5}, "3": {"rating": 0.0}}
+    }
+
+
+def test_forecast_for_finds_the_hour():
+    marine, weather = _responses(48)
+    hours, _ = surf.parse_responses(marine, weather)
+    assert surf.forecast_for(hours, hours[30].time + timedelta(minutes=45)) is hours[30]
+    assert surf.forecast_for(hours, hours[-1].time + timedelta(hours=2)) is None
 
 
 def test_hourly_attributes_are_compact():

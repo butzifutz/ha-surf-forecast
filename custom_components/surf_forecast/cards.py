@@ -27,8 +27,12 @@ class CardContext:
     compass_image: str
     windy_url: str
     surf_rating: str = ""
-    # lead days -> entity id of the "rating forecast from N days ago" sensor
-    lead_ratings: dict[int, str] = field(default_factory=dict)
+    # quantity -> current value entity (rating, wave, swell, wind)
+    actual: dict[str, str] = field(default_factory=dict)
+    # quantity -> lead days -> entity id of "<quantity> forecast from N days ago"
+    leads: dict[str, dict[int, str]] = field(default_factory=dict)
+    # quantity -> lead days -> entity id of "<quantity> in N days"
+    ahead: dict[str, dict[int, str]] = field(default_factory=dict)
 
 
 def compass_card(ctx: CardContext) -> str:
@@ -141,22 +145,47 @@ series:
 """
 
 
-def forecast_check_card(ctx: CardContext) -> str:
+QUANTITY_LABELS = {"rating": "Rating", "wave": "Wellenhöhe", "swell": "Swell", "wind": "Wind"}
+
+
+def _days(lead: int) -> str:
+    return "1 Tag" if lead == 1 else f"{lead} Tagen"
+
+
+def forecast_check_card(ctx: CardContext, quantity: str = "rating") -> str:
+    label = QUANTITY_LABELS[quantity]
     leads = "".join(
         f"""\
   - entity: {entity_id}
-    name: {_q(f"Prognose von vor {lead} Tag{'' if lead == 1 else 'en'}")}
+    name: {_q(f"Prognose von vor {_days(lead)}")}
 """
-        for lead, entity_id in sorted(ctx.lead_ratings.items())
+        for lead, entity_id in sorted(ctx.leads.get(quantity, {}).items())
     )
     return f"""\
 type: history-graph
-title: {_q(f"{ctx.title} – Prognose vs. aktuelles Rating")}
+title: {_q(f"{ctx.title} – {label}: Prognose vs. aktueller Lauf")}
 hours_to_show: 168
 entities:
-  - entity: {ctx.surf_rating}
-    name: Rating (aktueller Lauf)
+  - entity: {ctx.actual.get(quantity, ctx.surf_rating)}
+    name: {_q(f"{label} (aktueller Lauf)")}
 {leads}"""
+
+
+def preview_card(ctx: CardContext) -> str:
+    rows = "".join(
+        f"""\
+  - entity: {entity_id}
+    name: {_q(f"{QUANTITY_LABELS[quantity]} in {_days(lead)}")}
+"""
+        for quantity in ("rating", "wave", "wind")
+        for lead, entity_id in sorted(ctx.ahead.get(quantity, {}).items())
+    )
+    return f"""\
+type: glance
+title: {_q(f"{ctx.title} – Vorschau")}
+columns: 3
+entities:
+{rows}"""
 
 
 def week_table_card(ctx: CardContext) -> str:
@@ -183,7 +212,9 @@ def all_cards(ctx: CardContext) -> dict[str, str]:
         "compass": compass_card(ctx),
         "wave_chart": wave_chart_card(ctx),
         "rating_chart": rating_chart_card(ctx),
-        "forecast_check": forecast_check_card(ctx),
+        "preview": preview_card(ctx),
+        "rating_check": forecast_check_card(ctx, "rating"),
+        "wave_check": forecast_check_card(ctx, "wave"),
         "week_table": week_table_card(ctx),
     }
 
@@ -199,9 +230,13 @@ def notification_markdown(ctx: CardContext) -> str:
         f"```yaml\n{cards['wave_chart']}```\n\n"
         "**Surf-Rating 7 Tage** (braucht *ApexCharts Card* aus HACS)\n"
         f"```yaml\n{cards['rating_chart']}```\n\n"
-        "**Prognose vs. aktuelles Rating** (Standard-Verlaufskarte; füllt sich erst "
+        "**Vorschau in 1, 3 und 6 Tagen** (Standard-Kachelkarte)\n"
+        f"```yaml\n{cards['preview']}```\n\n"
+        "**Rating: Prognose vs. aktueller Lauf** (Standard-Verlaufskarte; füllt sich erst "
         "mit der Zeit, z. B. nach 3 Tagen für die 3-Tage-Prognose)\n"
-        f"```yaml\n{cards['forecast_check']}```\n\n"
+        f"```yaml\n{cards['rating_check']}```\n\n"
+        "**Wellenhöhe: Prognose vs. aktueller Lauf** (Standard-Verlaufskarte)\n"
+        f"```yaml\n{cards['wave_check']}```\n\n"
         "**7-Tage-Tabelle** (Standard-Markdown-Karte)\n"
         f"```yaml\n{cards['week_table']}```\n\n"
         "Erneut anzeigen: Button *Dashboard-Karten* am Spot-Gerät."

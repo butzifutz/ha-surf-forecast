@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -24,13 +24,15 @@ from .coordinator import SurfConfigEntry, SurfCoordinator
 from .entity import SurfEntity
 from .surf import (
     LEAD_DAYS,
+    TRACKED,
     HourPoint,
     Session,
     SurfCriteria,
     compass,
     hour_as_attr,
     in_corridor,
-    predicted_rating,
+    forecast_for,
+    predicted,
 )
 from .views import compass_url
 
@@ -162,14 +164,18 @@ async def async_setup_entry(
     ]
     entities += [NextSessionSensor(coordinator), ForecastSensor(coordinator)]
     entities += [NextSessionRatingSensor(coordinator), BestSessionSensor(coordinator)]
-    entities += [LeadRatingSensor(coordinator, lead) for lead in LEAD_DAYS]
+    entities += [
+        TrackedForecastSensor(coordinator, quantity, lead, ahead)
+        for quantity in TRACKED
+        for ahead in (True, False)
+        for lead in LEAD_DAYS
+    ]
 
-    # removed in 0.5.1: best rating per day (replaced by the lead sensors)
+    # removed: best rating per day (0.5.1), forecast from 2 days ago (0.6.0)
     registry = er.async_get(hass)
-    for offset in range(FORECAST_DAYS):
-        if entity_id := registry.async_get_entity_id(
-            "sensor", DOMAIN, f"{entry.entry_id}_rating_day_{offset}"
-        ):
+    removed = [f"rating_day_{offset}" for offset in range(FORECAST_DAYS)] + ["rating_lead_2"]
+    for key in removed:
+        if entity_id := registry.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_{key}"):
             registry.async_remove(entity_id)
     async_add_entities(entities)
 
@@ -347,20 +353,59 @@ class BestSessionSensor(SurfEntity, SensorEntity):
         return _session_attrs(self.coordinator, self._session())
 
 
-class LeadRatingSensor(SurfEntity, SensorEntity):
-    """Rating forecast made ``lead`` days ago for the current hour.
 
-    Same time axis as the surf rating sensor, so the history shows directly
-    how far off forecasts with 1, 2, 3, 6 days lead time were.
+class TrackedForecastSensor(SurfEntity, SensorEntity):
+    """Forecast of a quantity (rating, wave, swell, wind) on a lead time.
+
+    ahead=True:  value for now + ``lead`` days (live preview).
+    ahead=False: value forecast ``lead`` days ago for now; same time axis as
+                 the actual value, so the history overlays it directly.
     """
 
-    _attr_icon = "mdi:crystal-ball"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator: SurfCoordinator, lead: int) -> None:
-        super().__init__(coordinator, f"rating_lead_{lead}")
+    def __init__(
+        self, coordinator: SurfCoordinator, quantity: str, lead: int, ahead: bool
+    ) -> None:
+        # "rating_lead_N" is the unique id used since 0.5.1; keep its history
+        super().__init__(coordinator, f"{quantity}_{'ahead' if ahead else 'lead'}_{lead}")
+        self._quantity = quantity
         self._lead = lead
+        self._ahead = ahead
+        self._attr_icon = "mdi:crystal-ball" if not ahead else "mdi:calendar-arrow-right"
+        if quantity in ("wave", "swell"):
+            self._attr_device_class = SensorDeviceClass.DISTANCE
+            self._attr_native_unit_of_measurement = UnitOfLength.METERS
+            self._attr_suggested_display_precision = 1
+        elif quantity == "wind":
+            self._attr_device_class = SensorDeviceClass.WIND_SPEED
+            self._attr_native_unit_of_measurement = SPEED_UNITS[coordinator.wind_unit]
+            self._attr_suggested_display_precision = 0
 
     @property
     def native_value(self) -> float | None:
-        return predicted_rating(self.coordinator.forecast_archive, dt_util.utcnow(), self._lead)
+        now = dt_util.utcnow()
+        if not self._ahead:
+            return predicted(self.coordinator.forecast_archive, now, self._lead, self._quantity)
+        point = forecast_for(self.coordinator.data.hours, now + timedelta(days=self._lead))
+        return None if point is None else TRACKED[self._quantity](point)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        now = dt_util.utcnow()
+        tz = self.coordinator.data.tz
+        if self._ahead:
+            return {
+                "lead_days": self._lead,
+                "target_time": (now + timedelta(days=self._lead))
+                .astimezone(tz)
+                .replace(minute=0, second=0, microsecond=0)
+                .isoformat(timespec="minutes"),
+            }
+        return {
+            "lead_days": self._lead,
+            "issued": (now - timedelta(days=self._lead))
+            .astimezone(tz)
+            .replace(minute=0, second=0, microsecond=0)
+            .isoformat(timespec="minutes"),
+        }

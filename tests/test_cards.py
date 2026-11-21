@@ -27,7 +27,15 @@ CTX = cards.CardContext(
     compass_image="/api/surf_forecast/compass/abc.svg",
     windy_url="https://www.windy.com/54.180/7.880?waves,54.180,7.880,10",
     surf_rating="sensor.spot_surf_rating",
-    lead_ratings={1: "sensor.spot_rating_prognose_1", 3: "sensor.spot_rating_prognose_3"},
+    actual={"rating": "sensor.spot_surf_rating", "wave": "sensor.spot_wellenhohe"},
+    leads={
+        "rating": {1: "sensor.spot_rating_prognose_1", 3: "sensor.spot_rating_prognose_3"},
+        "wave": {1: "sensor.spot_welle_prognose_1"},
+    },
+    ahead={
+        "rating": {1: "sensor.spot_rating_in_1", 6: "sensor.spot_rating_in_6"},
+        "wind": {3: "sensor.spot_wind_in_3"},
+    },
 )
 
 
@@ -66,7 +74,7 @@ def test_week_table_card():
 
 def test_notification_contains_all_cards():
     text = cards.notification_markdown(CTX)
-    assert text.count("```yaml") == 5
+    assert text.count("```yaml") == 7
     for body in cards.all_cards(CTX).values():
         assert body in text
 
@@ -80,7 +88,7 @@ def test_rating_chart_card():
     assert card["yaxis"][0]["max"] == 5
 
 
-def test_forecast_check_card():
+def test_forecast_check_cards():
     card = yaml.safe_load(cards.forecast_check_card(CTX))
     assert card["type"] == "history-graph"
     assert [e["entity"] for e in card["entities"]] == [
@@ -89,3 +97,19 @@ def test_forecast_check_card():
         "sensor.spot_rating_prognose_3",
     ]
     assert card["entities"][2]["name"] == "Prognose von vor 3 Tagen"
+    wave = yaml.safe_load(cards.forecast_check_card(CTX, "wave"))
+    assert [e["entity"] for e in wave["entities"]] == [
+        "sensor.spot_wellenhohe",
+        "sensor.spot_welle_prognose_1",
+    ]
+    assert "Wellenhöhe" in wave["title"]
+
+
+def test_preview_card():
+    card = yaml.safe_load(cards.preview_card(CTX))
+    assert card["type"] == "glance"
+    assert [(e["entity"], e["name"]) for e in card["entities"]] == [
+        ("sensor.spot_rating_in_1", "Rating in 1 Tag"),
+        ("sensor.spot_rating_in_6", "Rating in 6 Tagen"),
+        ("sensor.spot_wind_in_3", "Wind in 3 Tagen"),
+    ]

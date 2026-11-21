@@ -114,7 +114,9 @@ das beste Rating im jeweiligen Zeitraum.
 | `sensor.<spot>_7_day_forecast` | State: bestes Rating heute. Attribute: `daily` (7 Tage) und `hourly` (168 h) |
 | `sensor.<spot>_next_session_rating` | Bestes Rating der nächsten Session (0 = keine in Sicht). Attribute: `start`, `end`, `hours`, `text` |
 | `sensor.<spot>_best_session` | Startzeit der Session mit dem höchsten Rating in den nächsten 7 Tagen. Attribute wie oben |
-| `sensor.<spot>_rating_lead_1` / `_2` / `_3` / `_6` | Rating, das 1, 2, 3 bzw. 6 Tage vorher für die aktuelle Stunde vorhergesagt wurde (siehe *Wie gut ist die Vorhersage?*) |
+| `sensor.<spot>_<größe>_ahead_1` / `_3` / `_6` | **Vorschau:** Vorhersage für jetzt + 1, 3 bzw. 6 Tage. Attribut `target_time` |
+| `sensor.<spot>_<größe>_lead_1` / `_3` / `_6` | **Rückschau:** was vor 1, 3 bzw. 6 Tagen für die aktuelle Stunde vorhergesagt wurde. Attribut `issued` |
+| | `<größe>` ist jeweils `rating`, `wave` (Wellenhöhe), `swell` (Swell-Höhe) und `wind` (Windgeschwindigkeit), insgesamt 24 Sensoren |
 | `binary_sensor.<spot>_surfable_now` | An, wenn die aktuelle Stunde passt |
 | `button.<spot>_dashboard_cards` | Zeigt fertiges Dashboard-YAML für diesen Spot als Benachrichtigung |
 
@@ -194,7 +196,7 @@ Später kannst du das YAML jederzeit erneut erzeugen:
 - **Aktion** `surf_forecast.dashboard_cards` (optional mit `config_entry_id`). Mit
   Antwortvariable liefert sie das YAML als Daten zurück, statt eine Benachrichtigung zu zeigen.
 
-Das erzeugte YAML enthält fünf Karten:
+Das erzeugte YAML enthält sieben Karten:
 
 - **Kompass** (braucht die [Compass Card](https://github.com/tomvanswam/compass-card) aus HACS):
   Der grüne Keil ist dein Wind-Korridor. Der Pfeil zeigt, woher der Wind gerade kommt, und ist grün, wenn er im Korridor
@@ -203,7 +205,9 @@ Das erzeugte YAML enthält fünf Karten:
 - **Welle & Wind 7 Tage** (braucht die [ApexCharts Card](https://github.com/RomRider/apexcharts-card)
   aus HACS): Wellenhöhe, Wind und Periode pro Stunde, grüne Balken für die surfbaren Stunden.
 - **Surf-Rating 7 Tage** (ApexCharts Card): das Rating jeder Stunde der nächsten 7 Tage.
-- **Prognose vs. aktuelles Rating** (Standard-Verlaufskarte, ohne HACS): siehe unten.
+- **Vorschau** (Standard-Kachelkarte): Rating, Wellenhöhe und Wind in 1, 3 und 6 Tagen.
+- **Rating** und **Wellenhöhe: Prognose vs. aktueller Lauf** (Standard-Verlaufskarten): siehe
+  *Vorschau und Rückschau*.
 - **7-Tage-Tabelle** (Standard-Markdown-Karte, ohne HACS): pro Tag Welle, Periode, Wellenrichtung,
   Wind und Rating sowie die nächste Session.
 
@@ -218,17 +222,29 @@ wind, wind_dir, energy, rating, match`. Jeder Tag in `daily` enthält u. a. `wav
 `period_max`, `energy_max`, `wave_compass`, `wind_min`, `wind_max`, `wind_compass`, `max_rating` und
 `good_hours`. Die Attribute stehen nur im Arbeitsspeicher, nicht in der Datenbank.
 
-### Wie gut ist die Vorhersage?
+### Vorschau und Rückschau
 
-Die Stundenwerte sind immer die neueste Vorhersage; die Integration holt jede Stunde den aktuellen
-Modelllauf. Um zu sehen, wie verlässlich frühere Vorhersagen für deinen Spot waren, merkt sie sich
-bei jedem Abruf das Rating, das sie für die Stunden in 1, 2, 3 und 6 Tagen vorhersagt. Ist die
-Stunde erreicht, geben die Sensoren *Rating-Prognose von vor N Tagen* diesen Wert aus.
+Standardkarten (Verlauf, Statistik, Sensor) zeigen nur Werte bis „jetzt“. Damit sich Vorhersagen
+trotzdem mit ihnen darstellen und auswerten lassen, gibt es für **Rating, Wellenhöhe, Swell-Höhe und
+Wind** je zwei Sorten Sensoren mit 1, 3 und 6 Tagen Vorlauf:
 
-Damit liegen alle Kurven auf derselben Zeitachse wie das *Surf-Rating* und lassen sich ohne
-Verschieben übereinanderlegen (Karte *Prognose vs. aktuelles Rating*). Weicht die Kurve „vor 3
-Tagen“ stark vom aktuellen Rating ab, war die Vorhersage mit 3 Tagen Vorlauf daneben. Die Sensoren
-füllen sich erst mit der Zeit: „vor 1 Tag“ nach 24 Stunden, „vor 6 Tagen“ nach 6 Tagen.
+- **Vorschau** (*Rating in 3 Tagen*, *Wellenhöhe in 1 Tag*, …): zeigt jetzt die Vorhersage für jetzt
+  + N Tage. Gut für Kacheln und Automationen („in 3 Tagen Rating ≥ 3“). Im Verlauf steht ein Wert
+  beim Abrufzeitpunkt, nicht bei der Zielzeit (die steht im Attribut `target_time`).
+- **Rückschau** (*Rating-Prognose von vor 3 Tagen*, *Wellenhöhe-Prognose von vor 1 Tag*, …): zeigt
+  jetzt, was vor N Tagen für jetzt vorhergesagt wurde. Diese Sensoren liegen auf derselben Zeitachse
+  wie der aktuelle Wert. In einer Verlaufs- oder Statistikkarte kannst du sie ohne Verschieben
+  übereinanderlegen; die Abweichung ist der Vorhersagefehler bei N Tagen Vorlauf.
+
+„Aktueller Lauf“ heißt dabei: der Wert des neuesten Modelllaufs für die aktuelle Stunde. Das ist die
+beste verfügbare Schätzung, aber keine Messung vor Ort.
+
+Die Rückschau-Sensoren füllen sich erst mit der Zeit: „vor 1 Tag“ nach 24 Stunden, „vor 6 Tagen“
+nach 6 Tagen. Gespeichert wird höchstens eine Woche, das sind wenige Kilobyte.
+
+Die Modelle rechnen unterschiedlich oft neu: der Wind für die ersten ~2 Tage (DWD ICON-D2) etwa alle
+3 Stunden, die Wellenmodelle meist 2- bis 4-mal am Tag. Die Integration fragt stündlich ab und
+verpasst damit keinen neuen Lauf.
 
 ## Grenzen
 
