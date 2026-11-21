@@ -35,11 +35,20 @@ def card_context(hass: HomeAssistant, entry: SurfConfigEntry) -> CardContext:
         return found or f"{platform}.{slugify(entry.title)}_{key}"
 
     coordinator = entry.runtime_data
+
+    def measured_or(key: str, fallback: str) -> str:
+        """Measured-wind entity if a station is configured, else the model one."""
+        if coordinator.wind_station and (
+            found := registry.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_{key}")
+        ):
+            return found
+        return entity_id("sensor", fallback)
+
     return CardContext(
         title=coordinator.spot_name,
-        wind_direction=entity_id("sensor", "wind_direction"),
+        wind_direction=measured_or("wind_direction_measured", "wind_direction"),
         wave_direction=entity_id("sensor", "wave_direction"),
-        wind_speed=entity_id("sensor", "wind_speed"),
+        wind_speed=measured_or("wind_measured", "wind_speed"),
         wave_height=entity_id("sensor", "wave_height"),
         forecast=entity_id("sensor", "forecast"),
         next_session=entity_id("sensor", "next_session"),
@@ -49,7 +58,7 @@ def card_context(hass: HomeAssistant, entry: SurfConfigEntry) -> CardContext:
             "rating": entity_id("sensor", "rating"),
             "wave": entity_id("sensor", "wave_height"),
             "swell": entity_id("sensor", "swell_height"),
-            "wind": entity_id("sensor", "wind_speed"),
+            "wind": measured_or("wind_measured", "wind_speed"),
         },
         leads={
             q: {lead: entity_id("sensor", f"{q}_lead_{lead}") for lead in LEAD_DAYS}

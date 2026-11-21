@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import datetime, timedelta
 from typing import Any
@@ -13,6 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
+from homeassistant.util.unit_conversion import SpeedConverter
 
 from .api import OpenMeteoClient, OpenMeteoError
 from .const import (
@@ -32,6 +34,7 @@ from .const import (
     CONF_WIND_DIR_TO,
     CONF_WIND_MAX,
     CONF_WIND_STRONG,
+    CONF_WIND_STATION,
     CONF_WIND_UNIT,
     DOMAIN,
     EVENT_SESSION,
@@ -41,12 +44,15 @@ from .const import (
 )
 from .surf import (
     ForecastArchive,
+    HourPoint,
     Session,
     SurfCriteria,
     SurfData,
     compass,
     evaluate,
     parse_responses,
+    rate_hour,
+    hour_matches,
     record_forecast,
     upgrade_archive,
 )
@@ -105,6 +111,7 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
         self.options: dict[str, Any] = effective_options(dict(entry.options))
         self.criteria = criteria_from_options(self.options)
         self.wind_unit = WIND_UNITS[self.options[CONF_WIND_UNIT]]
+        self.wind_station: str | None = self.options.get(CONF_WIND_STATION) or None
         location = entry.data[CONF_LOCATION]
         self.latitude: float = location[CONF_LATITUDE]
         self.longitude: float = location[CONF_LONGITUDE]
@@ -150,6 +157,50 @@ class SurfCoordinator(DataUpdateCoordinator[SurfData]):
     # ------------------------------------------------------------------ #
     # Notifications
     # ------------------------------------------------------------------ #
+
+    # ------------------------------------------------------------------ #
+    # Measured wind (weather entity of a station, e.g. DWD Warnemünde)
+    # ------------------------------------------------------------------ #
+
+    def measured_wind(self) -> dict[str, float | None] | None:
+        """Measured wind from the station in the configured unit, or None."""
+        if not self.wind_station or (state := self.hass.states.get(self.wind_station)) is None:
+            return None
+        attrs = state.attributes
+        unit = attrs.get("wind_speed_unit") or "km/h"
+
+        def speed(key: str) -> float | None:
+            try:
+                return round(SpeedConverter.convert(float(attrs[key]), unit, self.wind_unit), 1)
+            except (KeyError, TypeError, ValueError):
+                return None
+
+        try:
+            bearing = float(attrs["wind_bearing"])
+        except (KeyError, TypeError, ValueError):
+            bearing = None
+        values = {
+            "speed": speed("wind_speed"),
+            "gusts": speed("wind_gust_speed"),
+            "direction": bearing,
+        }
+        return values if values["speed"] is not None else None
+
+    def current_hour_measured(self) -> HourPoint | None:
+        """Current forecast hour with the model wind replaced by the measurement."""
+        hour = self.data.current_hour(dt_util.utcnow()) if self.data else None
+        wind = self.measured_wind()
+        if hour is None or wind is None:
+            return None
+        point = dataclasses.replace(
+            hour,
+            wind_speed=wind["speed"],
+            wind_gusts=wind["gusts"],
+            wind_direction=wind["direction"],
+        )
+        point.match = hour_matches(point, self.criteria)
+        point.rating = rate_hour(point, self.criteria)
+        return point
 
     def describe_session(self, session: Session, tz) -> str:
         start = session.start.astimezone(tz)

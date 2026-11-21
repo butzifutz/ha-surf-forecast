@@ -74,7 +74,7 @@ def test_week_table_card():
 
 def test_notification_contains_all_cards():
     text = cards.notification_markdown(CTX)
-    assert text.count("```yaml") == 7
+    assert text.count("```yaml") == 8
     for body in cards.all_cards(CTX).values():
         assert body in text
 

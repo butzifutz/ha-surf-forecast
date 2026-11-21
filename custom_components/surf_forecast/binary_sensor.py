@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -36,7 +38,16 @@ class SurfableNowSensor(SurfEntity, BinarySensorEntity):
     def __init__(self, coordinator: SurfCoordinator) -> None:
         super().__init__(coordinator, "surfable_now")
 
+    _follows_station = True
+
     @property
     def is_on(self) -> bool:
-        hour = self.coordinator.data.current_hour(dt_util.utcnow())
+        # prefer the measured wind of the station when one is configured
+        hour = self.coordinator.current_hour_measured() or self.coordinator.data.current_hour(
+            dt_util.utcnow()
+        )
         return bool(hour and hour.match)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"wind_source": "station" if self.coordinator.current_hour_measured() else "model"}

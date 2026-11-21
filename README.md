@@ -54,6 +54,7 @@ am Stück (mindestens *Mindestdauer*) ergeben eine **Session**.
 | Flaute | 8 km/h | Bis zu dieser Windstärke ist die Richtung egal |
 | Nachlauf-Bonus ab Swell-Höhe | 0,2 m | Restwelle nach einem Sturm, siehe Rating |
 | Wasserstand max. | aus (−1) | Darüber −1, z. B. bei Hochwasser durch Ostwind |
+| Wind-Messung | – | Optional: Wetter-Entität einer Station mit gemessenem Wind, siehe *Gemessener Wind* |
 | Mindestdauer | 2 h | So viele Stunden am Stück müssen passen |
 | Nur bei Tageslicht | an | Nachtstunden ignorieren |
 | Benachrichtigungsdienst | – | z. B. `notify.mobile_app_mein_handy` (optional) |
@@ -221,6 +222,26 @@ Für eigene Karten: Jeder Eintrag im Attribut `hourly` des 7-Tage-Forecast-Senso
 wind, wind_dir, energy, rating, match`. Jeder Tag in `daily` enthält u. a. `wave_min`, `wave_max`,
 `period_max`, `energy_max`, `wave_compass`, `wind_min`, `wind_max`, `wind_compass`, `max_rating` und
 `good_hours`. Die Attribute stehen nur im Arbeitsspeicher, nicht in der Datenbank.
+
+### Gemessener Wind
+
+Alle Werte von Open-Meteo sind Modellwerte, auch der für „jetzt“. Für den Wind gibt es echte
+Messungen: Wähle in den Optionen unter *Wind-Messung* die Wetter-Entität einer Station, z. B. der
+DWD-Station Warnemünde über die HACS-Integration
+[Deutscher Wetterdienst](https://github.com/hg1337/homeassistant-dwd). Gelesen werden die Attribute
+`wind_speed`, `wind_bearing` und `wind_gust_speed`; sie werden in deine Windeinheit umgerechnet.
+
+Dann kommen dazu:
+
+| Entität | Inhalt |
+|---|---|
+| `sensor.<spot>_wind_measured` / `_gusts_measured` / `_wind_direction_measured` | Gemessener Wind, Böen und Richtung (mit `compass` und `in_corridor`) |
+| `sensor.<spot>_rating_measured` | Rating der aktuellen Stunde mit gemessenem statt Modellwind. Attribut `rating_model_wind` zum Vergleich |
+
+*Jetzt surfbar* verwendet dann den gemessenen Wind (Attribut `wind_source`); fällt die Station aus,
+wieder den Modellwind. Die Sensoren aktualisieren sich, sobald die Station neue Werte meldet. Im
+generierten Dashboard zeigt der Kompass den gemessenen Wind, und die Rückschau-Karte für den Wind
+vergleicht die Prognosen mit der Messung statt mit dem Modell.
 
 ### Vorschau und Rückschau
 

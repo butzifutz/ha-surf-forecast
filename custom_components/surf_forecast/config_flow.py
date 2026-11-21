@@ -29,6 +29,7 @@ from .const import (
     CONF_WIND_DIR_FROM,
     CONF_WIND_DIR_TO,
     CONF_WIND_MAX,
+    CONF_WIND_STATION,
     CONF_WIND_STRONG,
     CONF_WIND_UNIT,
     DOMAIN,
@@ -74,6 +75,10 @@ def options_schema(options: dict[str, Any]) -> vol.Schema:
             vol.Required(CONF_WIND_MAX, default=o[CONF_WIND_MAX]): _number(0, 200, 1, unit),
             vol.Required(CONF_WIND_STRONG, default=o[CONF_WIND_STRONG]): _number(0, 200, 1, unit),
             vol.Required(CONF_CALM_MAX, default=o[CONF_CALM_MAX]): _number(0, 100, 1, unit),
+            vol.Optional(
+                CONF_WIND_STATION,
+                description={"suggested_value": o.get(CONF_WIND_STATION)},
+            ): selector.EntitySelector(selector.EntitySelectorConfig(domain="weather")),
             vol.Required(CONF_SWELL_BONUS_MIN, default=o[CONF_SWELL_BONUS_MIN]): _number(
                 0, 5, 0.05, "m"
             ),
@@ -111,6 +116,8 @@ def validate_options(user_input: dict[str, Any]) -> dict[str, str]:
 def _clean(user_input: dict[str, Any]) -> dict[str, Any]:
     data = dict(user_input)
     data[CONF_NOTIFY_SERVICE] = (data.get(CONF_NOTIFY_SERVICE) or "").strip()
+    if not data.get(CONF_WIND_STATION):
+        data.pop(CONF_WIND_STATION, None)
     for key in (CONF_MIN_DURATION, CONF_NOTIFY_DAYS, CONF_WIND_DIR_FROM, CONF_WIND_DIR_TO):
         data[key] = int(data[key])
     return data

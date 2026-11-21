@@ -215,6 +215,7 @@ def all_cards(ctx: CardContext) -> dict[str, str]:
         "preview": preview_card(ctx),
         "rating_check": forecast_check_card(ctx, "rating"),
         "wave_check": forecast_check_card(ctx, "wave"),
+        "wind_check": forecast_check_card(ctx, "wind"),
         "week_table": week_table_card(ctx),
     }
 
@@ -237,6 +238,9 @@ def notification_markdown(ctx: CardContext) -> str:
         f"```yaml\n{cards['rating_check']}```\n\n"
         "**Wellenhöhe: Prognose vs. aktueller Lauf** (Standard-Verlaufskarte)\n"
         f"```yaml\n{cards['wave_check']}```\n\n"
+        "**Wind: Prognose vs. aktueller Wert** (Standard-Verlaufskarte; mit Wind-Station "
+        "gegen den gemessenen Wind)\n"
+        f"```yaml\n{cards['wind_check']}```\n\n"
         "**7-Tage-Tabelle** (Standard-Markdown-Karte)\n"
         f"```yaml\n{cards['week_table']}```\n\n"
         "Erneut anzeigen: Button *Dashboard-Karten* am Spot-Gerät."

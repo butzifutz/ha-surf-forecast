@@ -164,6 +164,8 @@ async def async_setup_entry(
     ]
     entities += [NextSessionSensor(coordinator), ForecastSensor(coordinator)]
     entities += [NextSessionRatingSensor(coordinator), BestSessionSensor(coordinator)]
+    if coordinator.wind_station:
+        entities += [MeasuredSensor(coordinator, desc) for desc in MEASURED_SENSORS]
     entities += [
         TrackedForecastSensor(coordinator, quantity, lead, ahead)
         for quantity in TRACKED
@@ -409,3 +411,86 @@ class TrackedForecastSensor(SurfEntity, SensorEntity):
             .replace(minute=0, second=0, microsecond=0)
             .isoformat(timespec="minutes"),
         }
+
+
+@dataclass(frozen=True, kw_only=True)
+class MeasuredSensorDescription(SensorEntityDescription):
+    value_fn: Callable[[SurfCoordinator], float | None]
+
+
+def _measured(key: str) -> Callable[[SurfCoordinator], float | None]:
+    def value(coordinator: SurfCoordinator) -> float | None:
+        wind = coordinator.measured_wind()
+        return None if wind is None else wind[key]
+
+    return value
+
+
+def _measured_rating(coordinator: SurfCoordinator) -> float | None:
+    point = coordinator.current_hour_measured()
+    return None if point is None else point.rating
+
+
+MEASURED_SENSORS: tuple[MeasuredSensorDescription, ...] = (
+    MeasuredSensorDescription(
+        key="wind_measured",
+        device_class=SensorDeviceClass.WIND_SPEED,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=_measured("speed"),
+    ),
+    MeasuredSensorDescription(
+        key="gusts_measured",
+        device_class=SensorDeviceClass.WIND_SPEED,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=_measured("gusts"),
+    ),
+    MeasuredSensorDescription(
+        key="wind_direction_measured",
+        native_unit_of_measurement=DEGREE,
+        icon="mdi:weather-windy",
+        value_fn=_measured("direction"),
+    ),
+    MeasuredSensorDescription(
+        key="rating_measured",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:surfing",
+        value_fn=_measured_rating,
+    ),
+)
+
+
+class MeasuredSensor(SurfEntity, SensorEntity):
+    """Values based on the measured wind of the configured station."""
+
+    entity_description: MeasuredSensorDescription
+    _follows_station = True
+
+    def __init__(
+        self, coordinator: SurfCoordinator, description: MeasuredSensorDescription
+    ) -> None:
+        super().__init__(coordinator, description.key)
+        self.entity_description = description
+        if description.device_class == SensorDeviceClass.WIND_SPEED:
+            self._attr_native_unit_of_measurement = SPEED_UNITS[coordinator.wind_unit]
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.measured_wind() is not None
+
+    @property
+    def native_value(self) -> float | None:
+        return self.entity_description.value_fn(self.coordinator)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        attrs: dict[str, Any] = {"station": self.coordinator.wind_station}
+        if self.entity_description.key == "wind_direction_measured":
+            angle = self.native_value
+            attrs["compass"] = compass(angle)
+            attrs["in_corridor"] = int(in_corridor(angle, self.coordinator.criteria.wind_corridor))
+        if self.entity_description.key == "rating_measured":
+            model = self.coordinator.data.current_hour(dt_util.utcnow())
+            attrs["rating_model_wind"] = model.rating if model else None
+        return attrs

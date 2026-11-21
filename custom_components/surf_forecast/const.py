@@ -35,6 +35,8 @@ CONF_DAYLIGHT_ONLY = "daylight_only"
 CONF_NOTIFY_SERVICE = "notify_service"
 CONF_NOTIFY_DAYS = "notify_days"
 CONF_NOTIFY_MIN_RATING = "notify_min_rating"
+# weather entity with measured wind (e.g. a DWD station)
+CONF_WIND_STATION = "wind_station"
 
 # Open-Meteo "wind_speed_unit" values
 WIND_UNITS = {"kn": "kn", "kmh": "km/h", "ms": "m/s"}

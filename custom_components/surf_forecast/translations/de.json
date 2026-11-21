@@ -28,7 +28,8 @@
           "daylight_only": "Nur bei Tageslicht",
           "notify_service": "Benachrichtigungsdienst (z. B. notify.mobile_app_mein_handy)",
           "notify_days": "Vorlauf für Benachrichtigungen",
-          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)"
+          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)",
+          "wind_station": "Wind-Messung (Wetter-Entität einer Station)"
         },
         "data_description": {
           "energy_min": "Wellenenergie = 0,49 × Wellenhöhe² × Periode. 0,6 kW/m ≈ 0,6 m bei 3,5 s.",
@@ -38,7 +39,8 @@
           "wind_strong": "Darüber zieht das Rating 0,5 ab.",
           "swell_bonus_min": "Restwelle nach einem Sturm wird im Modell als Swell geführt. Darüber gibt es bis zu +1 (volle +1 bei 0,3 m mehr).",
           "sea_level_max": "Bei höherem Wasserstand (z. B. Hochwasser bei Ostwind) zieht das Rating 1 ab.",
-          "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst."
+          "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst.",
+          "wind_station": "Optional, z. B. die DWD-Station Warnemünde (HACS-Integration „Deutscher Wetterdienst“). Dann gibt es Sensoren mit dem gemessenen Wind, und „Jetzt surfbar“ nutzt den Messwind."
         }
       }
     },
@@ -74,7 +76,8 @@
           "daylight_only": "Nur bei Tageslicht",
           "notify_service": "Benachrichtigungsdienst (z. B. notify.mobile_app_mein_handy)",
           "notify_days": "Vorlauf für Benachrichtigungen",
-          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)"
+          "notify_min_rating": "Mindest-Rating für Benachrichtigungen (0–5)",
+          "wind_station": "Wind-Messung (Wetter-Entität einer Station)"
         },
         "data_description": {
           "energy_min": "Wellenenergie = 0,49 × Wellenhöhe² × Periode. 0,6 kW/m ≈ 0,6 m bei 3,5 s.",
@@ -84,7 +87,8 @@
           "wind_strong": "Darüber zieht das Rating 0,5 ab.",
           "swell_bonus_min": "Restwelle nach einem Sturm wird im Modell als Swell geführt. Darüber gibt es bis zu +1 (volle +1 bei 0,3 m mehr).",
           "sea_level_max": "Bei höherem Wasserstand (z. B. Hochwasser bei Ostwind) zieht das Rating 1 ab.",
-          "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst."
+          "notify_service": "Leer lassen, wenn du nur das Event surf_forecast_session bzw. den Blueprint nutzen willst.",
+          "wind_station": "Optional, z. B. die DWD-Station Warnemünde (HACS-Integration „Deutscher Wetterdienst“). Dann gibt es Sensoren mit dem gemessenen Wind, und „Jetzt surfbar“ nutzt den Messwind."
         }
       }
     },
@@ -229,6 +233,18 @@
       },
       "wind_lead_6": {
         "name": "Wind-Prognose von vor 6 Tagen"
+      },
+      "wind_measured": {
+        "name": "Wind gemessen"
+      },
+      "gusts_measured": {
+        "name": "Böen gemessen"
+      },
+      "wind_direction_measured": {
+        "name": "Windrichtung gemessen"
+      },
+      "rating_measured": {
+        "name": "Surf-Rating jetzt (Messwind)"
       }
     },
     "binary_sensor": {
